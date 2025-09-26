@@ -138,7 +138,7 @@ This is the main starting point.
 
 -   `new Client(options)`: Create a new instance.
     -   `options.token` (required): Your Discord user token.
-    -   `options.imageBaseUrl` (optional): Override the default image proxy service URL.
+    -   `options.apiBaseUrl` (optional): Override the default image proxy service URL.
 -   `client.run()`: Start connecting to Discord Gateway.
 -   `client.rpc`: Access the instance of `HieuxyzRPC` to build the state.
 
