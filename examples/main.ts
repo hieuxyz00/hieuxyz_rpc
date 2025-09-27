@@ -1,8 +1,5 @@
-import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { Client, LocalImage, logger } from '../src';
-
-dotenv.config();
 
 async function start() {
     const token = process.env.DISCORD_USER_TOKEN;
