@@ -7,7 +7,7 @@ export function getIdentifyPayload(token: string): IdentifyPayload {
         properties: {
             os: "Windows",
             browser: "Discord Client",
-            device: "kizzy_ts",
+            device: "hieuxyz©rpc",
         },
         compress: false,
     };
