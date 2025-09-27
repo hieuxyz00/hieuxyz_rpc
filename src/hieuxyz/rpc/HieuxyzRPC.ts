@@ -175,7 +175,7 @@ export class HieuxyzRPC {
      */
     public setApplicationId(id: string): this {
         if (!/^\d{18,19}$/.test(id)) {
-            throw new Error("ID ứng dụng phải là một số có 18 hoặc 19 chữ số.");
+            throw new Error("The app ID must be an 18 or 19 digit number.");
         }
         this.applicationId = id;
         return this;
