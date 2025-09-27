@@ -11,13 +11,21 @@ export interface ClientOptions {
     token: string;
     /** (Optional) Base URL of the image proxy service. */
     apiBaseUrl?: string;
+    /**
+     * (Optional) If true, the client will attempt to reconnect even after a normal close (code 1000).
+     * Defaults to false.
+     */
+    alwaysReconnect?: boolean;
 }
 
 /**
  * The main Client class for interacting with Discord Rich Presence.
  * This is the starting point for creating and managing your RPC state.
  * @example
- * const client = new Client({ token: "YOUR_DISCORD_TOKEN" });
+ * const client = new Client({
+ *   token: "YOUR_DISCORD_TOKEN",
+ *   alwaysReconnect: true // Keep the RPC alive no matter what
+ * });
  * await client.run();
  * client.rpc.setName("Visual Studio Code");
  * await client.rpc.build();
@@ -43,7 +51,11 @@ export class Client {
         }
         this.token = options.token;
         this.imageService = new ImageService(options.apiBaseUrl);
-        this.websocket = new DiscordWebSocket(this.token);
+
+        this.websocket = new DiscordWebSocket(this.token, {
+            alwaysReconnect: options.alwaysReconnect ?? false,
+        });
+
         this.rpc = new HieuxyzRPC(this.websocket, this.imageService);
     }
 
@@ -62,8 +74,10 @@ export class Client {
     /**
      * Close the connection to Discord Gateway.
      * Terminate RPC and clean up resources.
+     * If `alwaysReconnect` is true, the client will attempt to reconnect after this.
      */
     public close(): void {
+        this.rpc.stopBackgroundRenewal();
         this.websocket.close();
     }
 }

@@ -2,6 +2,7 @@ import { DiscordWebSocket } from "../gateway/DiscordWebSocket";
 import { Activity, PresenceUpdatePayload, SettableActivityType, ActivityTypeName, ActivityType } from "../gateway/entities/types";
 import { ImageService } from "./ImageService";
 import { DiscordImage, ExternalImage, RawImage, RpcImage } from "./RpcImage";
+import { logger } from "../utils/logger";
 
 interface RpcAssets {
     large_image?: RpcImage;
@@ -29,14 +30,19 @@ export class HieuxyzRPC {
     private applicationId: string = '1416676323459469363'; // Default ID, can be changed
 
     private platform: DiscordPlatform = 'desktop';
-    private resolvedAssetsCache: {
-        large_image?: string;
-        small_image?: string;
-    } = {};
+    
+    /**
+     * Cache for resolved image assets to avoid re-uploading or re-fetching.
+     * Key: A unique string from RpcImage.getCacheKey().
+     * Value: The resolved asset key (e.g., "mp:attachments/...").
+     */
+    private resolvedAssetsCache: Map<string, string> = new Map();
+    private renewalInterval: NodeJS.Timeout | null = null;
 
     constructor(websocket: DiscordWebSocket, imageService: ImageService) {
         this.websocket = websocket;
         this.imageService = imageService;
+        this.startBackgroundRenewal();
     }
 
     private _toRpcImage(source: string | RpcImage): RpcImage {
@@ -53,7 +59,7 @@ export class HieuxyzRPC {
                     return new ExternalImage(source);
                 }
             } catch (e) {
-                console.warn(`Could not parse "${source}" into a valid URL. Treating as RawImage.`);
+                logger.warn(`Could not parse "${source}" into a valid URL. Treating as RawImage.`);
                 return new RawImage(source);
             }
         }
@@ -150,7 +156,6 @@ export class HieuxyzRPC {
     public setLargeImage(source: string | RpcImage, text?: string): this {
         this.assets.large_image = this._toRpcImage(source);
         if (text) this.assets.large_text = this.sanitize(text);
-        delete this.resolvedAssetsCache.large_image;
         return this;
     }
 
@@ -163,7 +168,6 @@ export class HieuxyzRPC {
     public setSmallImage(source: string | RpcImage, text?: string): this {
         this.assets.small_image = this._toRpcImage(source);
         if (text) this.assets.small_text = this.sanitize(text);
-        delete this.resolvedAssetsCache.small_image;
         return this;
     }
 
@@ -213,31 +217,94 @@ export class HieuxyzRPC {
         return this;
     }
 
+    private getExpiryTime(assetKey: string): number | null {
+        if (!assetKey.startsWith('mp:attachments')) return null;
+
+        const urlPart = assetKey.substring(3);
+        try {
+            const parsedUrl = new URL(`https://cdn.discordapp.com/${urlPart}`);
+            const expiresTimestamp = parsedUrl.searchParams.get('ex');
+            if (expiresTimestamp) {
+                return parseInt(expiresTimestamp, 16) * 1000;
+            }
+        } catch (e) {
+            logger.error(`Could not parse asset URL for expiry check: ${assetKey}`);
+        }
+        return null;
+    }
+
+    private async renewAssetIfNeeded(cacheKey: string, assetKey: string): Promise<string> {
+        const expiryTimeMs = this.getExpiryTime(assetKey);
+        if (expiryTimeMs && expiryTimeMs < (Date.now() + 3600000)) {
+            logger.info(`Asset ${cacheKey} is expiring soon. Renewing...`);
+            const assetId = assetKey.split('mp:attachments/')[1];
+            const newAsset = await this.imageService.renewImage(assetId);
+            if (newAsset) {
+                this.resolvedAssetsCache.set(cacheKey, newAsset);
+                return newAsset;
+            }
+            logger.warn(`Failed to renew asset, will use the old one.`);
+        }
+        return assetKey;
+    }
+    
+    private startBackgroundRenewal(): void {
+        if (this.renewalInterval) {
+            clearInterval(this.renewalInterval);
+        }
+        this.renewalInterval = setInterval(async () => {
+            logger.info("Running background asset renewal check...");
+            for (const [cacheKey, assetKey] of this.resolvedAssetsCache.entries()) {
+                await this.renewAssetIfNeeded(cacheKey, assetKey);
+            }
+        }, 600000);
+    }
+
+    /**
+     * Stops the background process that checks for asset renewal.
+     */
+    public stopBackgroundRenewal(): void {
+        if (this.renewalInterval) {
+            clearInterval(this.renewalInterval);
+            this.renewalInterval = null;
+            logger.info("Stopped background asset renewal process.");
+        }
+    }
+
+    private async resolveImage(image: RpcImage | undefined): Promise<string | undefined> {
+        if (!image) return undefined;
+
+        const cacheKey = image.getCacheKey();
+        let cachedAsset = this.resolvedAssetsCache.get(cacheKey);
+
+        if (cachedAsset) {
+            return await this.renewAssetIfNeeded(cacheKey, cachedAsset);
+        }
+
+        const resolvedAsset = await image.resolve(this.imageService);
+        if (resolvedAsset) {
+            this.resolvedAssetsCache.set(cacheKey, resolvedAsset);
+        }
+        return resolvedAsset;
+    }
+
     private async buildActivity(): Promise<Activity> {
-        if (this.assets.large_image && !this.resolvedAssetsCache.large_image) {
-            this.resolvedAssetsCache.large_image = await this.assets.large_image.resolve(this.imageService);
-        }
-        if (this.assets.small_image && !this.resolvedAssetsCache.small_image) {
-            this.resolvedAssetsCache.small_image = await this.assets.small_image.resolve(this.imageService);
-        }
+        const large_image = await this.resolveImage(this.assets.large_image);
+        const small_image = await this.resolveImage(this.assets.small_image);
         
         const finalAssets: { large_image?: string; large_text?: string; small_image?: string; small_text?: string } = {
             large_text: this.assets.large_text,
             small_text: this.assets.small_text,
         };
-        if (this.resolvedAssetsCache.large_image) {
-            finalAssets.large_image = this.resolvedAssetsCache.large_image;
-        }
-        if (this.resolvedAssetsCache.small_image) {
-            finalAssets.small_image = this.resolvedAssetsCache.small_image;
-        }
+        if (large_image) finalAssets.large_image = large_image;
+        if (small_image) finalAssets.small_image = small_image;
 
         const finalActivity = { ...this.activity };
-        finalActivity.assets = finalAssets;
+        finalActivity.assets = (large_image || small_image) ? finalAssets : undefined;
         finalActivity.application_id = this.applicationId;
         finalActivity.platform = this.platform;
         if (!finalActivity.name) {
-            finalActivity.name = "Custom Status";
+            finalActivity.name = "hieuxyzRPC";
         }
         if (typeof finalActivity.type === 'undefined') {
             finalActivity.type = ActivityType.Playing;

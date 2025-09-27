@@ -11,6 +11,12 @@ export abstract class RpcImage {
      * @returns {Promise<string | undefined>} Asset key has been resolved.
      */
     abstract resolve(imageService: ImageService): Promise<string | undefined>;
+
+    /**
+     * Gets a unique key for this image instance, used for caching.
+     * @returns {string} A unique identifier for the image source.
+     */
+    abstract getCacheKey(): string;
 }
 
 /**
@@ -24,6 +30,10 @@ export class DiscordImage extends RpcImage {
     async resolve(): Promise<string | undefined> {
         return this.imageKey.startsWith('mp:') ? this.imageKey : `mp:${this.imageKey}`;
     }
+
+    getCacheKey(): string {
+        return `discord:${this.imageKey}`;
+    }
 }
 
 /**
@@ -36,6 +46,10 @@ export class ExternalImage extends RpcImage {
 
     async resolve(imageService: ImageService): Promise<string | undefined> {
         return imageService.getExternalUrl(this.url);
+    }
+
+    getCacheKey(): string {
+        return `external:${this.url}`;
     }
 }
 
@@ -54,6 +68,10 @@ export class LocalImage extends RpcImage {
     async resolve(imageService: ImageService): Promise<string | undefined> {
         return imageService.uploadImage(this.filePath, this.fileName);
     }
+
+    getCacheKey(): string {
+        return `local:${this.filePath}`;
+    }
 }
 
 /**
@@ -67,5 +85,9 @@ export class RawImage extends RpcImage {
 
     async resolve(imageService: ImageService): Promise<string | undefined> {
         return this.assetKey;
+    }
+
+    getCacheKey(): string {
+        return `raw:${this.assetKey}`;
     }
 }

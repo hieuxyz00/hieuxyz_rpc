@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import * as fs from 'fs';
 import FormData from 'form-data';
 import { logger } from '../utils/logger';
@@ -65,6 +65,25 @@ export class ImageService {
             }
         } catch (error) {
             logger.error(`Unable to upload image ${fileName}: ${error}`);
+        }
+        return undefined;
+    }
+
+    /**
+     * Requests a new signed URL for an expired or expiring attachment asset.
+     * @param assetId The asset ID part of the URL (e.g., "channel_id/message_id/filename.ext...")
+     * @returns {Promise<string | undefined>} The new asset key or undefined if it failed.
+     */
+    public async renewImage(assetId: string): Promise<string | undefined> {
+        try {
+            const response = await this.apiClient.post('/renew', { asset_id: assetId });
+            if (response.data && response.data.id) {
+                logger.info(`Successfully renewed asset: ${assetId}`);
+                return response.data.id;
+            }
+        } catch (error) {
+            const err = error as AxiosError;
+            logger.error(`Failed to renew asset ${assetId}: ${err.response?.data || err.message}`);
         }
         return undefined;
     }
