@@ -1,5 +1,5 @@
 import { DiscordWebSocket } from "../gateway/DiscordWebSocket";
-import { Activity, PresenceUpdatePayload } from "../gateway/entities/types";
+import { Activity, PresenceUpdatePayload, SettableActivityType, ActivityTypeName, ActivityType } from "../gateway/entities/types";
 import { ImageService } from "./ImageService";
 import { DiscordImage, ExternalImage, RawImage, RpcImage } from "./RpcImage";
 
@@ -99,11 +99,23 @@ export class HieuxyzRPC {
     
     /**
      * Set the activity type.
-     * @param type - The type of activity (e.g. 0 for 'Playing').
+     * @param type - The type of activity (e.g. 0, 'playing', or ActivityType.Playing).
      * @returns {this}
      */
-    public setType(type: number): this {
-        this.activity.type = type;
+    public setType(type: SettableActivityType): this {
+        if (typeof type === 'string') {
+            const typeMap: { [key in ActivityTypeName]: number } = {
+                playing: ActivityType.Playing,
+                streaming: ActivityType.Streaming,
+                listening: ActivityType.Listening,
+                watching: ActivityType.Watching,
+                custom: ActivityType.Custom,
+                competing: ActivityType.Competing,
+            };
+            this.activity.type = typeMap[type.toLowerCase() as ActivityTypeName] ?? ActivityType.Playing;
+        } else {
+            this.activity.type = type;
+        }
         return this;
     }
 
@@ -224,9 +236,11 @@ export class HieuxyzRPC {
         finalActivity.assets = finalAssets;
         finalActivity.application_id = this.applicationId;
         finalActivity.platform = this.platform;
-
         if (!finalActivity.name) {
             finalActivity.name = "Custom Status";
+        }
+        if (typeof finalActivity.type === 'undefined') {
+            finalActivity.type = ActivityType.Playing;
         }
 
         return finalActivity as Activity;

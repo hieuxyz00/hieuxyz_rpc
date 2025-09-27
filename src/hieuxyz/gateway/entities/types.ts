@@ -1,5 +1,18 @@
 import { OpCode } from "./OpCode";
 
+export enum ActivityType {
+    Playing = 0,
+    Streaming = 1,
+    Listening = 2,
+    Watching = 3,
+    Custom = 4,
+    Competing = 5,
+}
+
+export type ActivityTypeName = 'playing' | 'streaming' | 'listening' | 'watching' | 'custom' | 'competing';
+
+export type SettableActivityType = ActivityType | ActivityTypeName | number;
+
 export interface GatewayPayload {
     op: OpCode;
     d: any;
