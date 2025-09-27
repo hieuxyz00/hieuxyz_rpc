@@ -1,4 +1,4 @@
-export { Client, ClientOptions } from './Client';
+export { Client, ClientOptions } from './hieuxyz/Client';
 export { DiscordWebSocket } from './hieuxyz/gateway/DiscordWebSocket';
 export { HieuxyzRPC } from './hieuxyz/rpc/HieuxyzRPC';
 export { ImageService } from './hieuxyz/rpc/ImageService';

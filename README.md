@@ -67,7 +67,7 @@ async function start() {
         .setTimestamps(Date.now())
         .setParty(1, 5)
         .setLargeImage(new RawImage("mp:external/b7uybXM7LoJRB6_ig-65aX6dCHm2qGCEe8CiS5j7c2M/https/cdn.worldvectorlogo.com/logos/typescript.svg"), "TypeScript")
-        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png'), 'vscode.png'), "VS Code")
+        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code")
         .setButtons([
             { label: "View on GitHub", url: "https://github.com/hieuxyz00/hieuxyz_rpc" }
         ]);
@@ -161,7 +161,7 @@ Main builder class for RPC.
 ### Types of images
 
 -   `new ExternalImage(url)`: Use image from an external URL (will be proxy).
--   `new LocalImage(filePath, fileName)`: Upload a photo from your device.
+-   `new LocalImage(filePath, fileName?)`: Upload a photo from your device.
 -   `new RawImage(assetKey)`: Use an existing asset key directly.
 -   `new DiscordImage(key)`: Use assets already on Discord.
 

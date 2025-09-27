@@ -4,6 +4,10 @@ import { getIdentifyPayload } from './entities/identify';
 import { OpCode } from './entities/OpCode';
 import { GatewayPayload, PresenceUpdatePayload } from './entities/types';
 
+/**
+ * Manage WebSocket connections to Discord Gateway.
+ * Handles low-level operations like heartbeating, identifying, and resuming.
+ */
 export class DiscordWebSocket {
     private token: string;
     private ws: WebSocket | null = null;
@@ -13,8 +17,17 @@ export class DiscordWebSocket {
     private resumeGatewayUrl: string | null = null;
 
     private resolveReady: () => void = () => {};
+    /**
+     * A promise will be resolved when the Gateway connection is ready.
+     * and received the READY event.
+     */
     public readyPromise = new Promise<void>(resolve => (this.resolveReady = resolve));
 
+    /**
+     * Create a DiscordWebSocket instance.
+     * @param token - Discord user token for authentication.
+     * @throws {Error} If the token is invalid.
+     */
     constructor(token: string) {
         if (!this.isTokenValid(token)) {
             throw new Error("Invalid token provided.");
@@ -26,6 +39,10 @@ export class DiscordWebSocket {
         return /^[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{38}$/.test(token) || /^mfa\.[a-zA-Z0-9_-]{84}$/.test(token);
     }
 
+    /**
+     * Initiate connection to Discord Gateway.
+     * If there was a previous session, it will try to resume.
+     */
     public connect() {
         const url = this.resumeGatewayUrl || "wss://gateway.discord.gg/?v=10&encoding=json";
         this.ws = new WebSocket(url);
@@ -35,7 +52,7 @@ export class DiscordWebSocket {
             logger.warn(`Connection closed: ${code} - ${reason.toString()}`);
             this.cleanupHeartbeat();
             if (this.shouldReconnect(code)) {
-                logger.info("Attempting to reconnect...");
+                logger.info("Trying to reconnect...");
                 setTimeout(() => this.connect(), 350);
             } else {
                 this.sessionId = null;
@@ -43,7 +60,7 @@ export class DiscordWebSocket {
             }
         });
         this.ws.on('error', (err) => {
-            logger.error(`WebSocket error: ${err.message}`);
+            logger.error(`WebSocket Error: ${err.message}`);
         });
     }
 
@@ -69,7 +86,7 @@ export class DiscordWebSocket {
                     logger.info(`Session is READY. Session ID: ${this.sessionId}`);
                     this.resolveReady();
                 } else if (payload.t === 'RESUMED') {
-                    logger.info("Session has been successfully resumed.");
+                    logger.info("The session has been successfully resumed.");
                     this.resolveReady();
                 }
                 break;
@@ -84,7 +101,7 @@ export class DiscordWebSocket {
                 break;
             case OpCode.RECONNECT:
                 logger.info("Gateway requested reconnect. Closing and reconnecting.");
-                this.ws?.close(4000, "Reconnect requested");
+                this.ws?.close(4000, "Reconnect request");
                 break;
             default:
                 break;
@@ -104,7 +121,7 @@ export class DiscordWebSocket {
         this.sendJson({ op: OpCode.IDENTIFY, d: identifyPayload });
         logger.info("Identify payload sent.");
     }
-    
+
     private resume() {
         const resumePayload = {
             token: this.token,
@@ -115,6 +132,10 @@ export class DiscordWebSocket {
         logger.info("Resume payload sent.");
     }
 
+    /**
+     * Send presence update payload to Gateway.
+     * @param presence - Payload update status to send.
+     */
     public sendActivity(presence: PresenceUpdatePayload) {
         this.sendJson({ op: OpCode.PRESENCE_UPDATE, d: presence });
         logger.info("Presence update sent.");
@@ -128,6 +149,9 @@ export class DiscordWebSocket {
         }
     }
     
+    /**
+     * Close the WebSocket connection and clean up the resources.
+     */
     public close() {
         if (this.ws) {
             this.ws.close(1000, "Client closed connection");
