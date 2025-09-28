@@ -43,7 +43,7 @@ DISCORD_USER_TOKEN="YOUR_DISCORD_USER_TOKEN_HERE"
 
 ```typescript
 import * as path from 'path';
-import { Client, RawImage, LocalImage, logger } from '@hieuxyz/rpc';
+import { Client, LocalImage, logger } from '@hieuxyz/rpc';
 
 async function start() {
     const token = process.env.DISCORD_USER_TOKEN;
@@ -54,7 +54,10 @@ async function start() {
     }
 
     // Initialize client with token
-    const client = new Client({ token });
+    const client = new Client({
+        token,
+        alwaysReconnect: true,
+    });
 
     await client.run();
 
@@ -66,11 +69,8 @@ async function start() {
         .setType(0) // 0: Playing
         .setTimestamps(Date.now())
         .setParty(1, 5)
-        .setLargeImage(new RawImage("mp:external/b7uybXM7LoJRB6_ig-65aX6dCHm2qGCEe8CiS5j7c2M/https/cdn.worldvectorlogo.com/logos/typescript.svg"), "TypeScript")
-        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code")
-        .setButtons([
-            { label: "View on GitHub", url: "https://github.com/hieuxyz00/hieuxyz_rpc" }
-        ]);
+        .setLargeImage("https://i.ibb.co/MDP0hfTM/typescript.png", "TypeScript")
+        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code");
 
     await client.rpc.build();
 
@@ -139,8 +139,11 @@ This is the main starting point.
 -   `new Client(options)`: Create a new instance.
     -   `options.token` (required): Your Discord user token.
     -   `options.apiBaseUrl` (optional): Override the default image proxy service URL.
+    -   `options.alwaysReconnect` (optional): If `true`, the client will attempt to reconnect even after a normal close (e.g., from `client.close()` or a Discord-initiated close). Defaults to `false`.
 -   `client.run()`: Start connecting to Discord Gateway.
 -   `client.rpc`: Access the instance of `HieuxyzRPC` to build the state.
+-   `client.close(force?: boolean)`: Closes the connection to the Discord Gateway.
+    -   `force` (optional, boolean): If set to `true`, the client will close permanently and will not attempt to reconnect, overriding the `alwaysReconnect` option. Defaults to `false`.
 
 ### Class `HieuxyzRPC`
 

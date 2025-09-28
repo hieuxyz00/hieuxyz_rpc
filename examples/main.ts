@@ -45,7 +45,7 @@ async function start() {
 
     process.on('SIGINT', () => {
         logger.info("SIGINT received. Closing connection...");
-        client.close();
+        client.close(true);
         process.exit(0);
     });
 }

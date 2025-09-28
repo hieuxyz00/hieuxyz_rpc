@@ -73,11 +73,11 @@ export class Client {
 
     /**
      * Close the connection to Discord Gateway.
-     * Terminate RPC and clean up resources.
-     * If `alwaysReconnect` is true, the client will attempt to reconnect after this.
+     * @param {boolean} [force=false] - If true, the client will close permanently and will not attempt to reconnect,
+     * even if `alwaysReconnect` is enabled. Defaults to false.
      */
-    public close(): void {
+    public close(force: boolean = false): void {
         this.rpc.stopBackgroundRenewal();
-        this.websocket.close();
+        this.websocket.close(force);
     }
 }

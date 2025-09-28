@@ -22,6 +22,7 @@ export class DiscordWebSocket {
     private resumeGatewayUrl: string | null = null;
     private options: DiscordWebSocketOptions;
     private isReconnecting: boolean = false;
+    private permanentClose: boolean = false;
     private resolveReady: () => void = () => {};
     /**
      * A promise will be resolved when the Gateway connection is ready.
@@ -61,6 +62,7 @@ export class DiscordWebSocket {
             logger.info("Connection attempt aborted: reconnection already in progress.");
             return;
         }
+        this.permanentClose = false;
         this.isReconnecting = true;
         this.resetReadyPromise();
         const url = this.resumeGatewayUrl || "wss://gateway.discord.gg/?v=10&encoding=json";
@@ -78,6 +80,10 @@ export class DiscordWebSocket {
         this.ws.on('close', (code, reason) => {
             logger.warn(`Connection closed: ${code} - ${reason.toString('utf-8')}`);
             this.cleanupHeartbeat();
+            if (this.permanentClose) {
+                logger.info("Connection permanently closed by client. Not reconnecting.");
+                return;
+            }
             if (this.isReconnecting) return;
             if (this.shouldReconnect(code)) {
                 setTimeout(() => {
@@ -216,13 +222,20 @@ export class DiscordWebSocket {
     }
 
     /**
-     * Close the WebSocket connection and clean up the resources.
+     * Closes the WebSocket connection.
+     * @param force If true, prevents any automatic reconnection attempts.
      */
-    public close(code: number = 1000, reason: string = "Client closed connection") {
-        logger.info(`Closing connection manually with code ${code}: ${reason}`);
+    public close(force: boolean = false): void {
+        if (force) {
+            logger.info("Forcing permanent closure. Reconnects will be disabled.");
+            this.permanentClose = true;
+        } else {
+            logger.info("Closing connection manually...");
+        }
+
         this.isReconnecting = false;
         if (this.ws) {
-            this.ws.close(code, reason);
+            this.ws.close(1000, "Client initiated closure");
         }
     }
 
