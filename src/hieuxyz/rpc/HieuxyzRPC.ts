@@ -323,7 +323,7 @@ export class HieuxyzRPC {
             since: 0,
             activities: [activity],
             status: this.status,
-            afk: false,
+            afk: true,
         };
         this.websocket.sendActivity(presencePayload);
     }
