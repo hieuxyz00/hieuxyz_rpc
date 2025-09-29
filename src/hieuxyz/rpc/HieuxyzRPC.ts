@@ -336,4 +336,26 @@ export class HieuxyzRPC {
     public async updateRPC(): Promise<void> {
         await this.build();
     }
+
+    /**
+     * Clears the current Rich Presence from Discord and resets the builder state.
+     * This sends an empty activity payload to Discord and then resets all configured
+     * options (name, details, images, etc.) to their default values, allowing you
+     * to build a new presence from scratch.
+     */
+    public clear(): void {
+        const clearPayload: PresenceUpdatePayload = {
+            since: 0,
+            activities: [],
+            status: this.status,
+            afk: true,
+        };
+        this.websocket.sendActivity(clearPayload);
+        logger.info("Rich Presence cleared from Discord.");
+        this.activity = {};
+        this.assets = {};
+        this.applicationId = '1416676323459469363'; // Reset to default
+        this.platform = 'desktop'; // Reset to default
+        logger.info("RPC builder has been reset to its initial state.");
+    }
 }

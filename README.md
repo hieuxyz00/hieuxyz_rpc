@@ -43,7 +43,7 @@ DISCORD_USER_TOKEN="YOUR_DISCORD_USER_TOKEN_HERE"
 
 ```typescript
 import * as path from 'path';
-import { Client, LocalImage, logger } from '@hieuxyz/rpc';
+import { Client, LocalImage, logger } from '../src';
 
 async function start() {
     const token = process.env.DISCORD_USER_TOKEN;
@@ -73,25 +73,26 @@ async function start() {
         .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code");
 
     await client.rpc.build();
+    logger.info("Initial RPC has been set!");
 
-    setTimeout(async () => {
-        logger.info("Updating RPC details dynamically...");
+    setTimeout(() => {
+        logger.info("Clearing RPC and resetting builder...");
+        client.rpc.clear();
 
-        // Change the necessary information
         client.rpc
-            .setDetails("Reviewing pull requests")
-            .setState("PR #01: Feature enhancement")
-            .setParty(2, 5);
-
-        await client.rpc.updateRPC();
+            .setName("On a break")
+            .setDetails("Thinking about the next feature")
+            .setLargeImage("mp:external/dZwPAoMNVxT5qYqecH3Mfgxv1RQEdtGBU8nAspOcAo4/https/c.tenor.com/fvuYGhI1vgUAAAAC/tenor.gif", "Coffee Time");
         
-        logger.info("RPC has been dynamically updated!");
+        client.rpc.build();
+        logger.info("A new RPC has been set after clearing.");
 
-    }, 15000);
+    }, 20000);
 
     process.on('SIGINT', () => {
         logger.info("SIGINT received. Closing connection...");
-        client.close();
+        client.rpc.clear();
+        client.close(true);
         process.exit(0);
     });
 }
@@ -159,7 +160,8 @@ Main builder class for RPC.
 -   `.setButtons(buttons[])`: Set buttons (up to 2).
 -   `.setPlatform(platform)`: Lay the platform (`'desktop'`, `'xbox'`, `'ps5'`).
 -   `.build()`: First RPC send.
--   `.updateRPC()`: Send updates to an existing RPC.(it just call build() lol)
+-   `.updateRPC()`: Send updates to an existing RPC.(it just call build() lol).
+-   `.clear()`: Clears the current Rich Presence from the user's profile and resets the builder to its default state.
 
 ### Types of images
 
