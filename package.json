@@ -11,7 +11,10 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "node -r ts-node/register --env-file=.env examples/main.ts"
+    "dev": "node -r ts-node/register --env-file=.env examples/main.ts",
+    "lint": "eslint \"src/**/*.ts\" --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"examples/**/*.ts\""
   },
   "keywords": [
     "discord",
@@ -27,7 +30,12 @@
   "devDependencies": {
     "@types/node": "^24.5.2",
     "@types/ws": "^8.18.1",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.45.0"
   }
 }

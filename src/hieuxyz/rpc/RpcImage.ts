@@ -60,7 +60,10 @@ export class ExternalImage extends RpcImage {
 export class LocalImage extends RpcImage {
     private fileName: string;
 
-    constructor(private filePath: string, fileName?: string) {
+    constructor(
+        private filePath: string,
+        fileName?: string,
+    ) {
         super();
         this.fileName = fileName || path.basename(filePath);
     }
@@ -83,7 +86,7 @@ export class RawImage extends RpcImage {
         super();
     }
 
-    async resolve(imageService: ImageService): Promise<string | undefined> {
+    async resolve(__imageService: ImageService): Promise<string | undefined> {
         return this.assetKey;
     }
 

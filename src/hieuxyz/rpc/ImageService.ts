@@ -49,15 +49,15 @@ export class ImageService {
                 logger.error(`File not found at path: ${filePath}`);
                 return undefined;
             }
-            
+
             const form = new FormData();
             form.append('file', fs.createReadStream(filePath));
             form.append('file_name', fileName);
 
             const response = await this.apiClient.post('/upload', form, {
                 headers: {
-                    ...form.getHeaders()
-                }
+                    ...form.getHeaders(),
+                },
             });
 
             if (response.data && response.data.id) {

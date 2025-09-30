@@ -38,19 +38,22 @@ export class DiscordWebSocket {
      */
     constructor(token: string, options: DiscordWebSocketOptions) {
         if (!this.isTokenValid(token)) {
-            throw new Error("Invalid token provided.");
+            throw new Error('Invalid token provided.');
         }
         this.token = token;
         this.options = options;
-        this.readyPromise = new Promise<void>(resolve => (this.resolveReady = resolve));
+        this.readyPromise = new Promise<void>((resolve) => (this.resolveReady = resolve));
     }
-    
+
     private resetReadyPromise() {
-        this.readyPromise = new Promise<void>(resolve => (this.resolveReady = resolve));
+        this.readyPromise = new Promise<void>((resolve) => (this.resolveReady = resolve));
     }
 
     private isTokenValid(token: string): boolean {
-        return /^[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{38}$/.test(token) || /^mfa\.[a-zA-Z0-9_-]{84}$/.test(token);
+        return (
+            /^[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{38}$/.test(token) ||
+            /^mfa\.[a-zA-Z0-9_-]{84}$/.test(token)
+        );
     }
 
     /**
@@ -59,14 +62,14 @@ export class DiscordWebSocket {
      */
     public connect() {
         if (this.isReconnecting) {
-            logger.info("Connection attempt aborted: reconnection already in progress.");
+            logger.info('Connection attempt aborted: reconnection already in progress.');
             return;
         }
         this.permanentClose = false;
         this.isReconnecting = true;
         this.resetReadyPromise();
-        const url = this.resumeGatewayUrl || "wss://gateway.discord.gg/?v=10&encoding=json";
-        
+        const url = this.resumeGatewayUrl || 'wss://gateway.discord.gg/?v=10&encoding=json';
+
         logger.info(`Attempting to connect to ${url}...`);
         this.ws = new WebSocket(url);
 
@@ -74,14 +77,14 @@ export class DiscordWebSocket {
             logger.info(`Successfully connected to Discord Gateway at ${url}.`);
             this.isReconnecting = false;
         });
-        
+
         this.ws.on('message', this.onMessage.bind(this));
-        
+
         this.ws.on('close', (code, reason) => {
             logger.warn(`Connection closed: ${code} - ${reason.toString('utf-8')}`);
             this.cleanupHeartbeat();
             if (this.permanentClose) {
-                logger.info("Connection permanently closed by client. Not reconnecting.");
+                logger.info('Connection permanently closed by client. Not reconnecting.');
                 return;
             }
             if (this.isReconnecting) return;
@@ -96,7 +99,7 @@ export class DiscordWebSocket {
                     this.connect();
                 }, 500);
             } else {
-                 logger.info("Not attempting to reconnect based on close code and client options.");
+                logger.info('Not attempting to reconnect based on close code and client options.');
             }
         });
 
@@ -126,31 +129,31 @@ export class DiscordWebSocket {
             case OpCode.DISPATCH:
                 if (payload.t === 'READY') {
                     this.sessionId = payload.d.session_id;
-                    this.resumeGatewayUrl = payload.d.resume_gateway_url + "/?v=10&encoding=json";
+                    this.resumeGatewayUrl = payload.d.resume_gateway_url + '/?v=10&encoding=json';
                     logger.info(`Session READY. Session ID: ${this.sessionId}. Resume URL set.`);
                     this.resolveReady();
                 } else if (payload.t === 'RESUMED') {
-                    logger.info("The session has been successfully resumed.");
+                    logger.info('The session has been successfully resumed.');
                     this.resolveReady();
                 }
                 break;
 
             case OpCode.HEARTBEAT_ACK:
-                logger.info("Heartbeat acknowledged.");
+                logger.info('Heartbeat acknowledged.');
                 break;
-                
+
             case OpCode.INVALID_SESSION:
                 logger.warn(`Received INVALID_SESSION. Resumable: ${payload.d}`);
                 if (payload.d) {
-                    this.ws?.close(4000, "Invalid session, attempting to resume.");
+                    this.ws?.close(4000, 'Invalid session, attempting to resume.');
                 } else {
-                    this.ws?.close(4004, "Invalid session, starting a new session.");
+                    this.ws?.close(4004, 'Invalid session, starting a new session.');
                 }
                 break;
-                
+
             case OpCode.RECONNECT:
-                logger.info("Gateway requested RECONNECT. Closing to reconnect and resume.");
-                this.ws?.close(4000, "Gateway requested reconnect.");
+                logger.info('Gateway requested RECONNECT. Closing to reconnect and resume.');
+                this.ws?.close(4000, 'Gateway requested reconnect.');
                 break;
 
             default:
@@ -164,19 +167,18 @@ export class DiscordWebSocket {
             if (this.ws?.readyState === WebSocket.OPEN) {
                 this.sendHeartbeat();
             }
-            
+
             this.heartbeatInterval = setInterval(() => {
                 if (this.ws?.readyState !== WebSocket.OPEN) {
-                    logger.warn("Heartbeat skipped: WebSocket is not open.");
+                    logger.warn('Heartbeat skipped: WebSocket is not open.');
                     this.cleanupHeartbeat();
                     return;
                 }
                 this.sendHeartbeat();
             }, this.heartbeatIntervalValue);
-
         }, this.heartbeatIntervalValue * Math.random());
     }
-    
+
     private sendHeartbeat() {
         if (this.ws?.readyState !== WebSocket.OPEN) return;
         this.sendJson({ op: OpCode.HEARTBEAT, d: this.sequence });
@@ -186,22 +188,22 @@ export class DiscordWebSocket {
     private identify() {
         const identifyPayload = getIdentifyPayload(this.token);
         this.sendJson({ op: OpCode.IDENTIFY, d: identifyPayload });
-        logger.info("Identify payload sent.");
+        logger.info('Identify payload sent.');
     }
 
     private resume() {
         if (!this.sessionId || this.sequence === null) {
-            logger.error("Attempted to resume without session ID or sequence. Falling back to identify.");
+            logger.error('Attempted to resume without session ID or sequence. Falling back to identify.');
             this.identify();
             return;
         }
         const resumePayload = {
             token: this.token,
             session_id: this.sessionId,
-            seq: this.sequence
+            seq: this.sequence,
         };
         this.sendJson({ op: OpCode.RESUME, d: resumePayload });
-        logger.info("Resume payload sent.");
+        logger.info('Resume payload sent.');
     }
 
     /**
@@ -210,14 +212,14 @@ export class DiscordWebSocket {
      */
     public sendActivity(presence: PresenceUpdatePayload) {
         this.sendJson({ op: OpCode.PRESENCE_UPDATE, d: presence });
-        logger.info("Presence update sent.");
+        logger.info('Presence update sent.');
     }
 
     private sendJson(data: any) {
         if (this.ws?.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
         } else {
-            logger.warn("Attempted to send data while WebSocket was not open.");
+            logger.warn('Attempted to send data while WebSocket was not open.');
         }
     }
 
@@ -227,15 +229,15 @@ export class DiscordWebSocket {
      */
     public close(force: boolean = false): void {
         if (force) {
-            logger.info("Forcing permanent closure. Reconnects will be disabled.");
+            logger.info('Forcing permanent closure. Reconnects will be disabled.');
             this.permanentClose = true;
         } else {
-            logger.info("Closing connection manually...");
+            logger.info('Closing connection manually...');
         }
 
         this.isReconnecting = false;
         if (this.ws) {
-            this.ws.close(1000, "Client initiated closure");
+            this.ws.close(1000, 'Client initiated closure');
         }
     }
 

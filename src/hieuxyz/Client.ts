@@ -47,7 +47,7 @@ export class Client {
      */
     constructor(options: ClientOptions) {
         if (!options.token) {
-            throw new Error("Tokens are required to connect to Discord.");
+            throw new Error('Tokens are required to connect to Discord.');
         }
         this.token = options.token;
         this.imageService = new ImageService(options.apiBaseUrl);
@@ -66,9 +66,9 @@ export class Client {
      */
     public async run(): Promise<void> {
         this.websocket.connect();
-        logger.info("Waiting for Discord session to be ready...");
+        logger.info('Waiting for Discord session to be ready...');
         await this.websocket.readyPromise;
-        logger.info("Client is ready to send Rich Presence updates.");
+        logger.info('Client is ready to send Rich Presence updates.');
     }
 
     /**

@@ -1,8 +1,14 @@
-import { DiscordWebSocket } from "../gateway/DiscordWebSocket";
-import { Activity, PresenceUpdatePayload, SettableActivityType, ActivityTypeName, ActivityType } from "../gateway/entities/types";
-import { ImageService } from "./ImageService";
-import { DiscordImage, ExternalImage, RawImage, RpcImage } from "./RpcImage";
-import { logger } from "../utils/logger";
+import { DiscordWebSocket } from '../gateway/DiscordWebSocket';
+import {
+    Activity,
+    PresenceUpdatePayload,
+    SettableActivityType,
+    ActivityTypeName,
+    ActivityType,
+} from '../gateway/entities/types';
+import { ImageService } from './ImageService';
+import { DiscordImage, ExternalImage, RawImage, RpcImage } from './RpcImage';
+import { logger } from '../utils/logger';
 
 interface RpcAssets {
     large_image?: RpcImage;
@@ -30,7 +36,7 @@ export class HieuxyzRPC {
     private applicationId: string = '1416676323459469363'; // Default ID, can be changed
 
     private platform: DiscordPlatform = 'desktop';
-    
+
     /**
      * Cache for resolved image assets to avoid re-uploading or re-fetching.
      * Key: A unique string from RpcImage.getCacheKey().
@@ -58,7 +64,7 @@ export class HieuxyzRPC {
                 } else {
                     return new ExternalImage(source);
                 }
-            } catch (e) {
+            } catch {
                 logger.warn(`Could not parse "${source}" into a valid URL. Treating as RawImage.`);
                 return new RawImage(source);
             }
@@ -102,7 +108,7 @@ export class HieuxyzRPC {
         this.activity.state = this.sanitize(state);
         return this;
     }
-    
+
     /**
      * Set the activity type.
      * @param type - The type of activity (e.g. 0, 'playing', or ActivityType.Playing).
@@ -178,8 +184,8 @@ export class HieuxyzRPC {
      */
     public setButtons(buttons: RpcButton[]): this {
         const validButtons = buttons.slice(0, 2);
-        this.activity.buttons = validButtons.map(b => this.sanitize(b.label, 32));
-        this.activity.metadata = { button_urls: validButtons.map(b => b.url) };
+        this.activity.buttons = validButtons.map((b) => this.sanitize(b.label, 32));
+        this.activity.metadata = { button_urls: validButtons.map((b) => b.url) };
         return this;
     }
 
@@ -191,7 +197,7 @@ export class HieuxyzRPC {
      */
     public setApplicationId(id: string): this {
         if (!/^\d{18,19}$/.test(id)) {
-            throw new Error("The app ID must be an 18 or 19 digit number.");
+            throw new Error('The app ID must be an 18 or 19 digit number.');
         }
         this.applicationId = id;
         return this;
@@ -206,7 +212,7 @@ export class HieuxyzRPC {
         this.status = status;
         return this;
     }
-    
+
     /**
      * Set the platform on which the activity is running.
      * @param platform - Platform (e.g. 'desktop', 'xbox').
@@ -227,7 +233,7 @@ export class HieuxyzRPC {
             if (expiresTimestamp) {
                 return parseInt(expiresTimestamp, 16) * 1000;
             }
-        } catch (e) {
+        } catch {
             logger.error(`Could not parse asset URL for expiry check: ${assetKey}`);
         }
         return null;
@@ -235,7 +241,7 @@ export class HieuxyzRPC {
 
     private async renewAssetIfNeeded(cacheKey: string, assetKey: string): Promise<string> {
         const expiryTimeMs = this.getExpiryTime(assetKey);
-        if (expiryTimeMs && expiryTimeMs < (Date.now() + 3600000)) {
+        if (expiryTimeMs && expiryTimeMs < Date.now() + 3600000) {
             logger.info(`Asset ${cacheKey} is expiring soon. Renewing...`);
             const assetId = assetKey.split('mp:attachments/')[1];
             const newAsset = await this.imageService.renewImage(assetId);
@@ -247,13 +253,13 @@ export class HieuxyzRPC {
         }
         return assetKey;
     }
-    
+
     private startBackgroundRenewal(): void {
         if (this.renewalInterval) {
             clearInterval(this.renewalInterval);
         }
         this.renewalInterval = setInterval(async () => {
-            logger.info("Running background asset renewal check...");
+            logger.info('Running background asset renewal check...');
             for (const [cacheKey, assetKey] of this.resolvedAssetsCache.entries()) {
                 await this.renewAssetIfNeeded(cacheKey, assetKey);
             }
@@ -267,7 +273,7 @@ export class HieuxyzRPC {
         if (this.renewalInterval) {
             clearInterval(this.renewalInterval);
             this.renewalInterval = null;
-            logger.info("Stopped background asset renewal process.");
+            logger.info('Stopped background asset renewal process.');
         }
     }
 
@@ -275,7 +281,7 @@ export class HieuxyzRPC {
         if (!image) return undefined;
 
         const cacheKey = image.getCacheKey();
-        let cachedAsset = this.resolvedAssetsCache.get(cacheKey);
+        const cachedAsset = this.resolvedAssetsCache.get(cacheKey);
 
         if (cachedAsset) {
             return await this.renewAssetIfNeeded(cacheKey, cachedAsset);
@@ -291,7 +297,7 @@ export class HieuxyzRPC {
     private async buildActivity(): Promise<Activity> {
         const large_image = await this.resolveImage(this.assets.large_image);
         const small_image = await this.resolveImage(this.assets.small_image);
-        
+
         const finalAssets: { large_image?: string; large_text?: string; small_image?: string; small_text?: string } = {
             large_text: this.assets.large_text,
             small_text: this.assets.small_text,
@@ -300,11 +306,11 @@ export class HieuxyzRPC {
         if (small_image) finalAssets.small_image = small_image;
 
         const finalActivity = { ...this.activity };
-        finalActivity.assets = (large_image || small_image) ? finalAssets : undefined;
+        finalActivity.assets = large_image || small_image ? finalAssets : undefined;
         finalActivity.application_id = this.applicationId;
         finalActivity.platform = this.platform;
         if (!finalActivity.name) {
-            finalActivity.name = "hieuxyzRPC";
+            finalActivity.name = 'hieuxyzRPC';
         }
         if (typeof finalActivity.type === 'undefined') {
             finalActivity.type = ActivityType.Playing;
@@ -351,11 +357,11 @@ export class HieuxyzRPC {
             afk: true,
         };
         this.websocket.sendActivity(clearPayload);
-        logger.info("Rich Presence cleared from Discord.");
+        logger.info('Rich Presence cleared from Discord.');
         this.activity = {};
         this.assets = {};
         this.applicationId = '1416676323459469363'; // Reset to default
         this.platform = 'desktop'; // Reset to default
-        logger.info("RPC builder has been reset to its initial state.");
+        logger.info('RPC builder has been reset to its initial state.');
     }
 }

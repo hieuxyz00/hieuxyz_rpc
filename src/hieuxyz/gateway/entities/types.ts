@@ -1,4 +1,4 @@
-import { OpCode } from "./OpCode";
+import { OpCode } from './OpCode';
 
 export enum ActivityType {
     Playing = 0,
