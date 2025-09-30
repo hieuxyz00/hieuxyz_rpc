@@ -1,6 +1,6 @@
 {
   "name": "@hieuxyz/rpc",
-  "version": "1.0.9",
+  "version": "1.0.91",
   "description": "A Discord Rich Presence library for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2",
+    "@types/node": "^24.6.0",
     "@types/ws": "^8.18.1",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
