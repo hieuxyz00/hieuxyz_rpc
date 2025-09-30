@@ -38,6 +38,7 @@ export interface Activity {
     details?: string;
     state?: string;
     platform?: string;
+    instance?: boolean;
     party?: {
         id?: string;
         size?: [number, number];

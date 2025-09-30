@@ -75,6 +75,10 @@ export class HieuxyzRPC {
         return new RawImage(source);
     }
 
+    private cleanupNulls<T extends object>(obj: T): Partial<T> {
+        return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== null && v !== undefined)) as Partial<T>;
+    }
+
     private sanitize(str: string, length: number = 128): string {
         return str.length > length ? str.substring(0, length) : str;
     }
@@ -223,6 +227,52 @@ export class HieuxyzRPC {
         return this;
     }
 
+    /**
+     * Marks the activity as a joinable instance for the game.
+     * @param instance - Whether this activity is a specific instance.
+     * @returns {this}
+     */
+    public setInstance(instance: boolean): this {
+        this.activity.instance = instance;
+        return this;
+    }
+
+    public clearDetails(): this {
+        this.activity.details = undefined;
+        return this;
+    }
+    public clearState(): this {
+        this.activity.state = undefined;
+        return this;
+    }
+    public clearTimestamps(): this {
+        this.activity.timestamps = undefined;
+        return this;
+    }
+    public clearParty(): this {
+        this.activity.party = undefined;
+        return this;
+    }
+    public clearButtons(): this {
+        this.activity.buttons = undefined;
+        this.activity.metadata = undefined;
+        return this;
+    }
+    public clearInstance(): this {
+        this.activity.instance = undefined;
+        return this;
+    }
+    public clearLargeImage(): this {
+        this.assets.large_image = undefined;
+        this.assets.large_text = undefined;
+        return this;
+    }
+    public clearSmallImage(): this {
+        this.assets.small_image = undefined;
+        this.assets.small_text = undefined;
+        return this;
+    }
+
     private getExpiryTime(assetKey: string): number | null {
         if (!assetKey.startsWith('mp:attachments')) return null;
 
@@ -316,7 +366,7 @@ export class HieuxyzRPC {
             finalActivity.type = ActivityType.Playing;
         }
 
-        return finalActivity as Activity;
+        return this.cleanupNulls(finalActivity) as Activity;
     }
 
     /**

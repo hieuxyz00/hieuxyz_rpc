@@ -150,18 +150,34 @@ This is the main starting point.
 
 Main builder class for RPC.
 
--   `.setName(string)`: Activity name (first line).
--   `.setDetails(string)`: Activity details (second line).
--   `.setState(string)`: Activity status (third line).
--   `.setTimestamps(start?, end?)`: Set start/end time.
--   `.setParty(current, max)`: Set group information.
--   `.setLargeImage(RpcImage, text?)`: Set large image and caption.
--   `.setSmallImage(RpcImage, text?)`: Set thumbnail and caption.
--   `.setButtons(buttons[])`: Set buttons (up to 2).
--   `.setPlatform(platform)`: Lay the platform (`'desktop'`, `'xbox'`, `'ps5'`).
--   `.build()`: First RPC send.
--   `.updateRPC()`: Send updates to an existing RPC.(it just call build() lol).
--   `.clear()`: Clears the current Rich Presence from the user's profile and resets the builder to its default state.
+#### Setter Methods
+-   `.setName(string)`: Sets the activity name (first line).
+-   `.setDetails(string)`: Sets the activity details (second line).
+-   `.setState(string)`: Sets the activity state (third line).
+-   `.setTimestamps(start?, end?)`: Sets the start and/or end times.
+-   `.setParty(current, max)`: Sets the party information.
+-   `.setLargeImage(RpcImage, text?)`: Sets the large image and its tooltip text.
+-   `.setSmallImage(RpcImage, text?)`: Sets the small image and its tooltip text.
+-   `.setButtons(buttons[])`: Sets up to two clickable buttons.
+-   `.setPlatform(platform)`: Sets the platform (`'desktop'`, `'xbox'`, etc.).
+-   `.setInstance(boolean)`: Marks the activity as a specific, joinable instance.
+-   `.setApplicationId(string)`: Sets a custom Application ID.
+-   `.setStatus('online' | ...)`: Sets the user's presence status.
+
+#### Clearer Methods
+-   `.clearDetails()`: Removes the activity details.
+-   `.clearState()`: Removes the activity state.
+-   `.clearTimestamps()`: Removes the timestamps.
+-   `.clearParty()`: Removes the party information.
+-   `.clearLargeImage()`: Removes the large image and its text.
+-   `.clearSmallImage()`: Removes the small image and its text.
+-   `.clearButtons()`: Removes all buttons.
+-   `.clearInstance()`: Removes the instance flag.
+
+#### Core Methods
+-   `.build()`: Builds and sends the presence payload to Discord.
+-   `.updateRPC()`: Builds and sends an updated presence payload. (Alias for `build()`).
+-   `.clear()`: Clears the entire Rich Presence from the user's profile and resets the builder to its default state.
 
 ### Types of images
 
