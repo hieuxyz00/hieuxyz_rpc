@@ -43,7 +43,7 @@ DISCORD_USER_TOKEN="YOUR_DISCORD_USER_TOKEN_HERE"
 
 ```typescript
 import * as path from 'path';
-import { Client, LocalImage, logger } from '../src';
+import { Client, LocalImage, logger } from '@hieuxyz/rpc';
 
 async function start() {
     const token = process.env.DISCORD_USER_TOKEN;
