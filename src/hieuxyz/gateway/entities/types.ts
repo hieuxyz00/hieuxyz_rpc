@@ -20,15 +20,17 @@ export interface GatewayPayload {
     t?: string | null;
 }
 
+export interface IdentifyProperties {
+    os: string;
+    browser: string;
+    device: string;
+}
+
 export interface IdentifyPayload {
     token: string;
     capabilities: number;
-    largeThreshold: number,
-    properties: {
-        os: string;
-        browser: string;
-        device: string;
-    };
+    largeThreshold: number;
+    properties: IdentifyProperties;
     compress: boolean;
 }
 
@@ -40,6 +42,8 @@ export interface Activity {
     state?: string;
     platform?: string;
     instance?: boolean;
+    flags?: number;
+    sync_id?: string;
     party?: {
         id?: string;
         size?: [number, number];
@@ -53,6 +57,11 @@ export interface Activity {
         large_text?: string;
         small_image?: string;
         small_text?: string;
+    };
+    secrets?: {
+        join?: string;
+        spectate?: string;
+        match?: string;
     };
     buttons?: string[];
     metadata?: {

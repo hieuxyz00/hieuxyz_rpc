@@ -22,7 +22,10 @@ async function start() {
         .setParty(1, 5)
         .setLargeImage(new LocalImage(path.join(__dirname, 'typescript.png'), 'typescript.png'), 'Typescript')
         .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png'), 'vscode.png'), 'VS Code')
-        .setButtons([{ label: 'View on GitHub', url: 'https://github.com/hieuxyz00/hieuxyz_rpc' }]);
+        .setButtons([
+            { label: 'View on GitHub', url: 'https://github.com/hieuxyz00/hieuxyz_rpc' },
+            { label: 'View on NPM', url: 'https://www.npmjs.com/package/@hieuxyz/rpc' },
+        ]);
 
     await client.rpc.build();
     logger.info('Initial Rich Presence has been updated. Check your Discord profile.');

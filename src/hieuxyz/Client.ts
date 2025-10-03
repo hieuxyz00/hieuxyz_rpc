@@ -2,6 +2,7 @@ import { DiscordWebSocket } from './gateway/DiscordWebSocket';
 import { HieuxyzRPC } from './rpc/HieuxyzRPC';
 import { ImageService } from './rpc/ImageService';
 import { logger } from './utils/logger';
+import { ClientProperties } from './gateway/entities/identify';
 
 /**
  * Option to initialize Client.
@@ -16,6 +17,16 @@ export interface ClientOptions {
      * Defaults to false.
      */
     alwaysReconnect?: boolean;
+    /**
+     * (Optional) Client properties to send to Discord gateway.
+     * Used for client spoofing (e.g., appearing as on mobile).
+     */
+    properties?: ClientProperties;
+    /**
+     * (Optional) The timeout in milliseconds for the initial gateway connection.
+     * Defaults to 30000 (30 seconds).
+     */
+    connectionTimeout?: number;
 }
 
 /**
@@ -33,7 +44,7 @@ export interface ClientOptions {
 export class Client {
     /**
      * Provides access to RPC constructor methods.
-     * Use this property to set your Rich Presence state details.
+     * Use this to set your Rich Presence state details.
      */
     public readonly rpc: HieuxyzRPC;
     private readonly websocket: DiscordWebSocket;
@@ -42,7 +53,7 @@ export class Client {
 
     /**
      * Create a new Client instance.
-     * @param options - Options to configure the client.
+     * @param {ClientOptions} options - Options to configure the client.
      * @throws {Error} If no token is provided in the options.
      */
     constructor(options: ClientOptions) {
@@ -54,6 +65,8 @@ export class Client {
 
         this.websocket = new DiscordWebSocket(this.token, {
             alwaysReconnect: options.alwaysReconnect ?? false,
+            properties: options.properties,
+            connectionTimeout: options.connectionTimeout,
         });
 
         this.rpc = new HieuxyzRPC(this.websocket, this.imageService);

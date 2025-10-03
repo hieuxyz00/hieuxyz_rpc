@@ -1,12 +1,14 @@
 import WebSocket from 'ws';
 import * as zlib from 'zlib';
 import { logger } from '../utils/logger';
-import { getIdentifyPayload } from './entities/identify';
+import { ClientProperties, getIdentifyPayload } from './entities/identify';
 import { OpCode } from './entities/OpCode';
 import { GatewayPayload, PresenceUpdatePayload } from './entities/types';
 
 interface DiscordWebSocketOptions {
     alwaysReconnect: boolean;
+    properties?: ClientProperties;
+    connectionTimeout?: number;
 }
 
 /**
@@ -24,6 +26,7 @@ export class DiscordWebSocket {
     private options: DiscordWebSocketOptions;
     private isReconnecting: boolean = false;
     private permanentClose: boolean = false;
+    private connectTimeout: NodeJS.Timeout | null = null;
     private resolveReady: () => void = () => {};
     /**
      * A promise will be resolved when the Gateway connection is ready.
@@ -33,8 +36,8 @@ export class DiscordWebSocket {
 
     /**
      * Create a DiscordWebSocket instance.
-     * @param token - Discord user token for authentication.
-     * @param options - Configuration options for the WebSocket client.
+     * @param {string} token - Discord user token for authentication.
+     * @param {DiscordWebSocketOptions} options - Configuration options for the WebSocket client.
      * @throws {Error} If the token is invalid.
      */
     constructor(token: string, options: DiscordWebSocketOptions) {
@@ -42,7 +45,11 @@ export class DiscordWebSocket {
             throw new Error('Invalid token provided.');
         }
         this.token = token;
-        this.options = options;
+        this.options = {
+            alwaysReconnect: options.alwaysReconnect ?? false,
+            properties: options.properties,
+            connectionTimeout: options.connectionTimeout ?? 30000,
+        };
         this.readyPromise = new Promise<void>((resolve) => (this.resolveReady = resolve));
     }
 
@@ -74,44 +81,61 @@ export class DiscordWebSocket {
         logger.info(`Attempting to connect to ${url}...`);
         this.ws = new WebSocket(url);
 
+        this.connectTimeout = setTimeout(() => {
+            logger.error('Connection timed out. Terminating connection attempt.');
+            if (this.ws) {
+                this.ws.terminate();
+            }
+        }, this.options.connectionTimeout);
+
         this.ws.on('open', () => {
             logger.info(`Successfully connected to Discord Gateway at ${url}.`);
             this.isReconnecting = false;
+            if (this.connectTimeout) {
+                clearTimeout(this.connectTimeout);
+                this.connectTimeout = null;
+            }
         });
 
         this.ws.on('message', this.onMessage.bind(this));
-
-        this.ws.on('close', (code, reason) => {
-            logger.warn(`Connection closed: ${code} - ${reason.toString('utf-8')}`);
-            this.cleanupHeartbeat();
-            if (this.permanentClose) {
-                logger.info('Connection permanently closed by client. Not reconnecting.');
-                return;
-            }
-            if (this.isReconnecting) return;
-            if (this.shouldReconnect(code)) {
-                setTimeout(() => {
-                    const canResume = code !== 4004 && !!this.sessionId;
-                    if (!canResume) {
-                        this.sessionId = null;
-                        this.sequence = null;
-                        this.resumeGatewayUrl = null;
-                    }
-                    this.connect();
-                }, 500);
-            } else {
-                logger.info('Not attempting to reconnect based on close code and client options.');
-            }
-        });
-
+        this.ws.on('close', this.handleClose.bind(this));
         this.ws.on('error', (err) => {
-            logger.error(`WebSocket Error: ${err.message}`);
+            if (err.message !== 'WebSocket was closed before the connection was established') {
+                logger.error(`WebSocket Error: ${err.message}`);
+            }
         });
+    }
+
+    private handleClose(code: number, reason: Buffer) {
+        logger.warn(`Connection closed: ${code} - ${reason.toString('utf-8')}`);
+        this.cleanupHeartbeat();
+        if (this.connectTimeout) {
+            clearTimeout(this.connectTimeout);
+            this.connectTimeout = null;
+        }
+        this.isReconnecting = false;
+
+        if (code === 4004) {
+            this.sessionId = null;
+            this.sequence = null;
+            this.resumeGatewayUrl = null;
+        }
+
+        if (this.permanentClose) {
+            logger.info('Connection permanently closed by client. Not reconnecting.');
+            return;
+        }
+
+        if (this.shouldReconnect(code)) {
+            logger.info('Attempting to reconnect in 5 seconds...');
+            setTimeout(() => this.connect(), 5000);
+        } else {
+            logger.info('Not attempting to reconnect based on close code and client options.');
+        }
     }
 
     private onMessage(data: WebSocket.RawData, isBinary: boolean) {
         let decompressedData: string;
-
         if (isBinary) {
             decompressedData = zlib.inflateSync(data as Buffer).toString('utf-8');
         } else {
@@ -126,6 +150,10 @@ export class DiscordWebSocket {
 
         switch (payload.op) {
             case OpCode.HELLO:
+                if (this.connectTimeout) {
+                    clearTimeout(this.connectTimeout);
+                    this.connectTimeout = null;
+                }
                 this.heartbeatIntervalValue = payload.d.heartbeat_interval;
                 logger.info(`Received HELLO. Setting heartbeat interval to ${this.heartbeatIntervalValue}ms.`);
                 this.startHeartbeating();
@@ -196,7 +224,7 @@ export class DiscordWebSocket {
     }
 
     private identify() {
-        const identifyPayload = getIdentifyPayload(this.token);
+        const identifyPayload = getIdentifyPayload(this.token, this.options.properties);
         this.sendJson({ op: OpCode.IDENTIFY, d: identifyPayload });
         logger.info('Identify payload sent.');
     }
@@ -218,7 +246,7 @@ export class DiscordWebSocket {
 
     /**
      * Send presence update payload to Gateway.
-     * @param presence - Payload update status to send.
+     * @param {PresenceUpdatePayload} presence - Payload update status to send.
      */
     public sendActivity(presence: PresenceUpdatePayload) {
         this.sendJson({ op: OpCode.PRESENCE_UPDATE, d: presence });
@@ -235,7 +263,7 @@ export class DiscordWebSocket {
 
     /**
      * Closes the WebSocket connection.
-     * @param force If true, prevents any automatic reconnection attempts.
+     * @param {boolean} force If true, prevents any automatic reconnection attempts.
      */
     public close(force: boolean = false): void {
         if (force) {
@@ -245,9 +273,12 @@ export class DiscordWebSocket {
             logger.info('Closing connection manually...');
         }
 
-        this.isReconnecting = false;
         if (this.ws) {
-            this.ws.close(1000, 'Client initiated closure');
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.ws.close(1000, 'Client initiated closure');
+            } else {
+                this.ws.terminate();
+            }
         }
     }
 
@@ -259,7 +290,9 @@ export class DiscordWebSocket {
     }
 
     private shouldReconnect(code: number): boolean {
-        const fatalErrorCodes = [4010, 4011, 4013, 4014];
+        if (code === 1006) return true;
+
+        const fatalErrorCodes = [4004, 4010, 4011, 4013, 4014];
         if (fatalErrorCodes.includes(code)) {
             logger.error(`Fatal WebSocket error received (code: ${code}). Will not reconnect.`);
             return false;
@@ -267,6 +300,7 @@ export class DiscordWebSocket {
         if (this.options.alwaysReconnect) {
             return true;
         }
+
         return code !== 1000;
     }
 }

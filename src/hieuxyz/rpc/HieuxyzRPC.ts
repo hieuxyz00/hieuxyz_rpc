@@ -10,6 +10,19 @@ import { ImageService } from './ImageService';
 import { DiscordImage, ExternalImage, RawImage, RpcImage } from './RpcImage';
 import { logger } from '../utils/logger';
 
+/**
+ * Flags for activities, used with `.setFlags()`.
+ * @enum {number}
+ */
+export enum ActivityFlags {
+    INSTANCE = 1 << 0,
+    JOIN = 1 << 1,
+    SPECTATE = 1 << 2,
+    JOIN_REQUEST = 1 << 3,
+    SYNC = 1 << 4,
+    PLAY = 1 << 5,
+}
+
 interface RpcAssets {
     large_image?: RpcImage;
     large_text?: string;
@@ -20,6 +33,12 @@ interface RpcAssets {
 interface RpcButton {
     label: string;
     url: string;
+}
+
+interface RpcSecrets {
+    join?: string;
+    spectate?: string;
+    match?: string;
 }
 
 export type DiscordPlatform = 'desktop' | 'android' | 'ios' | 'samsung' | 'xbox' | 'ps4' | 'ps5' | 'embedded';
@@ -33,7 +52,7 @@ export class HieuxyzRPC {
     private activity: Partial<Activity> = {};
     private assets: RpcAssets = {};
     private status: 'online' | 'dnd' | 'idle' | 'invisible' | 'offline' = 'online';
-    private applicationId: string = '1416676323459469363'; // Default ID, can be changed
+    private applicationId: string = '1416676323459469363';
 
     private platform: DiscordPlatform = 'desktop';
 
@@ -49,6 +68,50 @@ export class HieuxyzRPC {
         this.websocket = websocket;
         this.imageService = imageService;
         this.startBackgroundRenewal();
+    }
+
+    /**
+     * Returns the URL of the large image asset, if available.
+     * @type {string | null}
+     * @readonly
+     */
+    public get largeImageUrl(): string | null {
+        if (!this.assets.large_image) return null;
+        const cacheKey = this.assets.large_image.getCacheKey();
+        const resolvedAsset = this.resolvedAssetsCache.get(cacheKey);
+        return resolvedAsset ? this._resolveAssetUrl(resolvedAsset) : null;
+    }
+
+    /**
+     * Returns the URL of the small image asset, if available.
+     * @type {string | null}
+     * @readonly
+     */
+    public get smallImageUrl(): string | null {
+        if (!this.assets.small_image) return null;
+        const cacheKey = this.assets.small_image.getCacheKey();
+        const resolvedAsset = this.resolvedAssetsCache.get(cacheKey);
+        return resolvedAsset ? this._resolveAssetUrl(resolvedAsset) : null;
+    }
+
+    private _resolveAssetUrl(assetKey: string): string | null {
+        if (assetKey.startsWith('mp:')) {
+            return `https://media.discordapp.net/${assetKey.substring(3)}`;
+        }
+        if (assetKey.startsWith('spotify:')) {
+            return `https://i.scdn.co/image/${assetKey.substring(8)}`;
+        }
+        if (assetKey.startsWith('youtube:')) {
+            return `https://i.ytimg.com/vi/${assetKey.substring(8)}/hqdefault.jpg`;
+        }
+        if (assetKey.startsWith('twitch:')) {
+            return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${assetKey.substring(7)}.png`;
+        }
+        // For assets uploaded to a Discord application
+        if (this.applicationId && !assetKey.startsWith('http')) {
+            return `https://cdn.discordapp.com/app-assets/${this.applicationId}/${assetKey}.png`;
+        }
+        return null;
     }
 
     private _toRpcImage(source: string | RpcImage): RpcImage {
@@ -85,7 +148,7 @@ export class HieuxyzRPC {
 
     /**
      * Name the operation (first line of RPC).
-     * @param name - Name to display.
+     * @param {string} name - Name to display.
      * @returns {this}
      */
     public setName(name: string): this {
@@ -95,7 +158,7 @@ export class HieuxyzRPC {
 
     /**
      * Set details for the operation (second line of RPC).
-     * @param details - Details to display.
+     * @param {string} details - Details to display.
      * @returns {this}
      */
     public setDetails(details: string): this {
@@ -105,7 +168,7 @@ export class HieuxyzRPC {
 
     /**
      * Set the state for the operation (third line of the RPC).
-     * @param state - State to display.
+     * @param {string} state - State to display.
      * @returns {this}
      */
     public setState(state: string): this {
@@ -115,7 +178,7 @@ export class HieuxyzRPC {
 
     /**
      * Set the activity type.
-     * @param type - The type of activity (e.g. 0, 'playing', or ActivityType.Playing).
+     * @param {SettableActivityType} type - The type of activity (e.g. 0, 'playing', or ActivityType.Playing).
      * @returns {this}
      */
     public setType(type: SettableActivityType): this {
@@ -137,8 +200,8 @@ export class HieuxyzRPC {
 
     /**
      * Set a start and/or end timestamp for the activity.
-     * @param start - Unix timestamp (milliseconds) for start time.
-     * @param end - Unix timestamp (milliseconds) for the end time.
+     * @param {number} [start] - Unix timestamp (milliseconds) for start time.
+     * @param {number} [end] - Unix timestamp (milliseconds) for the end time.
      * @returns {this}
      */
     public setTimestamps(start?: number, end?: number): this {
@@ -148,8 +211,8 @@ export class HieuxyzRPC {
 
     /**
      * Set party information for the activity.
-     * @param currentSize - Current number of players.
-     * @param maxSize - Maximum number of players.
+     * @param {number} currentSize - Current number of players.
+     * @param {number} maxSize - Maximum number of players.
      * @returns {this}
      */
     public setParty(currentSize: number, maxSize: number): this {
@@ -159,8 +222,8 @@ export class HieuxyzRPC {
 
     /**
      * Set large image and its caption text.
-     * @param source - Image source (URL, asset key, or RpcImage object).
-     * @param text - Text displayed when hovering over image.
+     * @param {string | RpcImage} source - Image source (URL, asset key, or RpcImage object).
+     * @param {string} [text] - Text displayed when hovering over image.
      * @returns {this}
      */
     public setLargeImage(source: string | RpcImage, text?: string): this {
@@ -171,8 +234,8 @@ export class HieuxyzRPC {
 
     /**
      * Set the small image and its caption text.
-     * @param source - Image source (URL, asset key, or RpcImage object).
-     * @param text - Text displayed when hovering over image.
+     * @param {string | RpcImage} source - Image source (URL, asset key, or RpcImage object).
+     * @param {string} [text] - Text displayed when hovering over image.
      * @returns {this}
      */
     public setSmallImage(source: string | RpcImage, text?: string): this {
@@ -183,7 +246,7 @@ export class HieuxyzRPC {
 
     /**
      * Set clickable buttons for RPC (up to 2).
-     * @param buttons - An array of button objects.
+     * @param {RpcButton[]} buttons - An array of button objects, each with a `label` and `url`.
      * @returns {this}
      */
     public setButtons(buttons: RpcButton[]): this {
@@ -194,8 +257,38 @@ export class HieuxyzRPC {
     }
 
     /**
+     * Set secrets for joining, spectating, and matching games.
+     * @param {RpcSecrets} secrets - An object with join, spectate, and/or match secrets.
+     * @returns {this}
+     */
+    public setSecrets(secrets: RpcSecrets): this {
+        this.activity.secrets = secrets;
+        return this;
+    }
+
+    /**
+     * Set the sync_id, typically used for Spotify track synchronization.
+     * @param {string} syncId - The synchronization ID.
+     * @returns {this}
+     */
+    public setSyncId(syncId: string): this {
+        this.activity.sync_id = syncId;
+        return this;
+    }
+
+    /**
+     * Set activity flags. Use the ActivityFlags enum for convenience.
+     * @param {number} flags - A number representing the bitwise flags.
+     * @returns {this}
+     */
+    public setFlags(flags: number): this {
+        this.activity.flags = flags;
+        return this;
+    }
+
+    /**
      * Set custom application ID for RPC.
-     * @param id - Discord app ID (must be an 18 or 19 digit number string).
+     * @param {string} id - Discord app ID (must be an 18 or 19 digit number string).
      * @throws {Error} If ID is invalid.
      * @returns {this}
      */
@@ -209,7 +302,7 @@ export class HieuxyzRPC {
 
     /**
      * Set the user's status (e.g. online, idle, dnd).
-     * @param status - Desired state.
+     * @param {'online' | 'dnd' | 'idle' | 'invisible' | 'offline'} status - Desired state.
      * @returns {this}
      */
     public setStatus(status: 'online' | 'dnd' | 'idle' | 'invisible' | 'offline'): this {
@@ -219,7 +312,7 @@ export class HieuxyzRPC {
 
     /**
      * Set the platform on which the activity is running.
-     * @param platform - Platform (e.g. 'desktop', 'xbox').
+     * @param {DiscordPlatform} platform - Platform (e.g. 'desktop', 'xbox').
      * @returns {this}
      */
     public setPlatform(platform: DiscordPlatform): this {
@@ -229,7 +322,7 @@ export class HieuxyzRPC {
 
     /**
      * Marks the activity as a joinable instance for the game.
-     * @param instance - Whether this activity is a specific instance.
+     * @param {boolean} instance - Whether this activity is a specific instance.
      * @returns {this}
      */
     public setInstance(instance: boolean): this {
@@ -256,6 +349,10 @@ export class HieuxyzRPC {
     public clearButtons(): this {
         this.activity.buttons = undefined;
         this.activity.metadata = undefined;
+        return this;
+    }
+    public clearSecrets(): this {
+        this.activity.secrets = undefined;
         return this;
     }
     public clearInstance(): this {

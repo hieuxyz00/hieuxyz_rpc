@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/npm/l/@hieuxyz/rpc.svg)](https://github.com/hieuxyz/rpc/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/npm/dt/@hieuxyz/rpc.svg)](https://www.npmjs.com/package/@hieuxyz/rpc)
 
-An easy-to-use Discord Rich Presence (RPC) library built for the Node.js environment using TypeScript. This library is designed to simplify the creation and management of custom RPC states for Discord user accounts.
+An easy-to-use and powerful Discord Rich Presence (RPC) library built for the Node.js environment using TypeScript. This library is designed to simplify the creation and management of custom RPC states for Discord user accounts.
 
 > [!WARNING]
 > **I don't take any responsibility for blocked Discord accounts that used this module.**
@@ -17,7 +17,6 @@ An easy-to-use Discord Rich Presence (RPC) library built for the Node.js environ
 
 -   **Flexible Builder Pattern:** Easily build your RPC state with intuitive chainable methods.
 -   **Easy to use:** The `Client` class abstracts away all the complex connection and setup logic, letting you get started with just a few lines of code.
--   **Auto Resume:** Built-in auto reconnect and session recovery mechanism in case of network failure, ensuring your RPC is always stable.
 
 ## Install
 
@@ -65,17 +64,21 @@ async function start() {
         .setName("Visual Studio Code")
         .setDetails("Developing a new library")
         .setState("Workspace: @hieuxyz/rpc")
-        .setPlatform('desktop') // 'desktop', 'xbox', 'ps5', etc.
+        .setPlatform('desktop')
         .setType(0) // 0: Playing
         .setTimestamps(Date.now())
         .setParty(1, 5)
         .setLargeImage("https://i.ibb.co/MDP0hfTM/typescript.png", "TypeScript")
-        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code");
+        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png')), "VS Code")
+        .setButtons([
+            { label: 'View on GitHub', url: 'https://github.com/hieuxyz00/hieuxyz_rpc' },
+            { label: 'View on NPM', url: 'https://www.npmjs.com/package/@hieuxyz/rpc' }
+        ]);
 
     await client.rpc.build();
     logger.info("Initial RPC has been set!");
 
-    setTimeout(() => {
+    setTimeout(async () => {
         logger.info("Clearing RPC and resetting builder...");
         client.rpc.clear();
 
@@ -84,7 +87,7 @@ async function start() {
             .setDetails("Thinking about the next feature")
             .setLargeImage("mp:external/dZwPAoMNVxT5qYqecH3Mfgxv1RQEdtGBU8nAspOcAo4/https/c.tenor.com/fvuYGhI1vgUAAAAC/tenor.gif", "Coffee Time");
         
-        client.rpc.build();
+        await client.rpc.build();
         logger.info("A new RPC has been set after clearing.");
 
     }, 20000);
@@ -102,11 +105,32 @@ start().catch(err => {
 });
 ```
 
+## Advanced Usage
+
+### Client Spoofing
+
+You can make it appear as though you are using Discord from a different device (e.g., mobile) by providing the `properties` option during client initialization.
+
+```typescript
+import { Client } from '@hieuxyz/rpc';
+
+const client = new Client({
+    token: "YOUR_TOKEN",
+    properties: {
+        os: 'Android',
+        browser: 'Discord Android',
+        device: 'Android16',
+    }
+});
+
+// ...
+```
+
 ## Get Token ?
 
 - Based: [findByProps](https://discord.com/channels/603970300668805120/1085682686607249478/1085682686607249478)
 
-<strong>Run code (Discord Console - [Ctrl + Shift + I])</strong>
+**Run code (Discord Console - [Ctrl + Shift + I])**
 
 ```js
 window.webpackChunkdiscord_app.push([
@@ -140,15 +164,21 @@ This is the main starting point.
 -   `new Client(options)`: Create a new instance.
     -   `options.token` (required): Your Discord user token.
     -   `options.apiBaseUrl` (optional): Override the default image proxy service URL.
-    -   `options.alwaysReconnect` (optional): If `true`, the client will attempt to reconnect even after a normal close (e.g., from `client.close()` or a Discord-initiated close). Defaults to `false`.
+    -   `options.alwaysReconnect` (optional): If `true`, the client will attempt to reconnect even after a normal close. Defaults to `false`.
+    -   `options.properties` (optional): An object to spoof client properties (OS, browser, device).
+    -   `options.connectionTimeout` (optional): Timeout in milliseconds for the initial connection. Defaults to `30000`.
 -   `client.run()`: Start connecting to Discord Gateway.
 -   `client.rpc`: Access the instance of `HieuxyzRPC` to build the state.
 -   `client.close(force?: boolean)`: Closes the connection to the Discord Gateway.
-    -   `force` (optional, boolean): If set to `true`, the client will close permanently and will not attempt to reconnect, overriding the `alwaysReconnect` option. Defaults to `false`.
+    -   `force` (optional, boolean): If `true`, the client closes permanently and will not reconnect.
 
 ### Class `HieuxyzRPC`
 
 Main builder class for RPC.
+
+#### Getter Properties
+-   `.largeImageUrl`: Returns the resolved URL for the large image, or `null`.
+-   `.smallImageUrl`: Returns the resolved URL for the small image, or `null`.
 
 #### Setter Methods
 -   `.setName(string)`: Sets the activity name (first line).
@@ -158,33 +188,37 @@ Main builder class for RPC.
 -   `.setParty(current, max)`: Sets the party information.
 -   `.setLargeImage(RpcImage, text?)`: Sets the large image and its tooltip text.
 -   `.setSmallImage(RpcImage, text?)`: Sets the small image and its tooltip text.
--   `.setButtons(buttons[])`: Sets up to two clickable buttons.
+-   `.setButtons(buttons[])`: Sets up to two clickable buttons. Each button is an object `{ label: string, url: string }`.
+-   `.setSecrets({ join?, spectate?, match? })`: Sets secrets for game invites.
+-   `.setSyncId(string)`: Sets the sync ID, used for features like Spotify track syncing.
+-   `.setFlags(number)`: Sets activity flags (e.g., for instanced games). Use the `ActivityFlags` enum.
 -   `.setPlatform(platform)`: Sets the platform (`'desktop'`, `'xbox'`, etc.).
 -   `.setInstance(boolean)`: Marks the activity as a specific, joinable instance.
 -   `.setApplicationId(string)`: Sets a custom Application ID.
 -   `.setStatus('online' | ...)`: Sets the user's presence status.
 
 #### Clearer Methods
--   `.clearDetails()`: Removes the activity details.
--   `.clearState()`: Removes the activity state.
--   `.clearTimestamps()`: Removes the timestamps.
--   `.clearParty()`: Removes the party information.
--   `.clearLargeImage()`: Removes the large image and its text.
--   `.clearSmallImage()`: Removes the small image and its text.
+-   `.clearDetails()`: Removes activity details.
+-   `.clearState()`: Removes activity state.
+-   `.clearTimestamps()`: Removes timestamps.
+-   `.clearParty()`: Removes party information.
+-   `.clearLargeImage()`: Removes the large image and text.
+-   `.clearSmallImage()`: Removes the small image and text.
 -   `.clearButtons()`: Removes all buttons.
+-   `.clearSecrets()`: Removes all secrets.
 -   `.clearInstance()`: Removes the instance flag.
 
 #### Core Methods
 -   `.build()`: Builds and sends the presence payload to Discord.
--   `.updateRPC()`: Builds and sends an updated presence payload. (Alias for `build()`).
--   `.clear()`: Clears the entire Rich Presence from the user's profile and resets the builder to its default state.
+-   `.updateRPC()`: Alias for `build()`.
+-   `.clear()`: Clears the Rich Presence from the user's profile and resets the builder.
 
 ### Types of images
 
--   `new ExternalImage(url)`: Use image from an external URL (will be proxy).
+-   `new ExternalImage(url)`: Use an image from an external URL (will be proxied).
 -   `new LocalImage(filePath, fileName?)`: Upload a photo from your device.
--   `new RawImage(assetKey)`: Use an existing asset key directly.
--   `new DiscordImage(key)`: Use assets already on Discord.
+-   `new RawImage(assetKey)`: Use an existing asset key directly (e.g., `spotify:track_id`).
+-   `new DiscordImage(key)`: Use assets already on Discord (e.g., `mp:attachments/...`).
 
 ## Author
 
