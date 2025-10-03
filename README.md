@@ -1,7 +1,7 @@
 # @hieuxyz/rpc
 
 [![NPM Version](https://img.shields.io/npm/v/@hieuxyz/rpc.svg)](https://www.npmjs.com/package/@hieuxyz/rpc)
-[![License](https://img.shields.io/npm/l/@hieuxyz/rpc.svg)](https://github.com/hieuxyz/rpc/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/@hieuxyz/rpc.svg)](https://github.com/hieuxyz00/hieuxyz_rpc/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/npm/dt/@hieuxyz/rpc.svg)](https://www.npmjs.com/package/@hieuxyz/rpc)
 
 An easy-to-use and powerful Discord Rich Presence (RPC) library built for the Node.js environment using TypeScript. This library is designed to simplify the creation and management of custom RPC states for Discord user accounts.
