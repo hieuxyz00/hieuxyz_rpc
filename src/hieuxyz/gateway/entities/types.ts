@@ -23,6 +23,7 @@ export interface GatewayPayload {
 export interface IdentifyPayload {
     token: string;
     capabilities: number;
+    largeThreshold: number,
     properties: {
         os: string;
         browser: string;

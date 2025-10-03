@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import * as zlib from 'zlib';
 import { logger } from '../utils/logger';
 import { getIdentifyPayload } from './entities/identify';
 import { OpCode } from './entities/OpCode';
@@ -108,8 +109,17 @@ export class DiscordWebSocket {
         });
     }
 
-    private onMessage(data: WebSocket.RawData) {
-        const payload: GatewayPayload = JSON.parse(data.toString());
+    private onMessage(data: WebSocket.RawData, isBinary: boolean) {
+        let decompressedData: string;
+
+        if (isBinary) {
+            decompressedData = zlib.inflateSync(data as Buffer).toString('utf-8');
+        } else {
+            decompressedData = data.toString('utf-8');
+        }
+
+        const payload: GatewayPayload = JSON.parse(decompressedData);
+
         if (payload.s) {
             this.sequence = payload.s;
         }

@@ -4,11 +4,12 @@ export function getIdentifyPayload(token: string): IdentifyPayload {
     return {
         token: token,
         capabilities: 65,
+        largeThreshold: 50,
         properties: {
             os: 'Windows',
             browser: 'Discord Client',
             device: 'hieuxyz©rpc',
         },
-        compress: false,
+        compress: true,
     };
 }
