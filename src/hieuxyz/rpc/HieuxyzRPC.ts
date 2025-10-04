@@ -329,6 +329,19 @@ export class HieuxyzRPC {
         this.activity.instance = instance;
         return this;
     }
+    
+    /**
+     * Sets the emoji for an activity (primarily used for Custom Status).
+     * @param {object} [emoji] - The emoji object to display.
+     * @param {string} emoji.name - The name of the emoji.
+     * @param {string} [emoji.id] - The ID of the custom emoji.
+     * @param {boolean} [emoji.animated] - Whether the custom emoji is animated.
+     * @returns {this}
+     */
+    public setEmoji(emoji?: { name: string; id?: string; animated?: boolean }): this {
+        this.activity.emoji = emoji;
+        return this;
+    }
 
     public clearDetails(): this {
         this.activity.details = undefined;
@@ -367,6 +380,10 @@ export class HieuxyzRPC {
     public clearSmallImage(): this {
         this.assets.small_image = undefined;
         this.assets.small_text = undefined;
+        return this;
+    }
+    public clearEmoji(): this {
+        this.activity.emoji = undefined;
         return this;
     }
 

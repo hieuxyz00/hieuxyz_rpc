@@ -32,7 +32,9 @@
   },
   "homepage": "https://github.com/hieuxyz00/hieuxyz_rpc#readme",
   "dependencies": {
+    "@sapphire/async-queue": "^1.5.5",
     "axios": "^1.12.2",
+    "tough-cookie": "^6.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {

@@ -9,8 +9,10 @@ async function start() {
         return;
     }
 
-    const client = new Client({ token });
+    const client = new Client({ token, alwaysReconnect: true});
     await client.run();
+    
+    // client.settings.setCustomStatus({ text: "testing project", emojiName: "f_thua", emojiId: "1410840775901839481", expiresAt: null })
 
     client.rpc
         .setName('Visual Studio Code')

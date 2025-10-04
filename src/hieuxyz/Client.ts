@@ -3,6 +3,8 @@ import { HieuxyzRPC } from './rpc/HieuxyzRPC';
 import { ImageService } from './rpc/ImageService';
 import { logger } from './utils/logger';
 import { ClientProperties } from './gateway/entities/identify';
+import { UserSettings } from './user/UserSettings';
+import { HTTPClient } from './http/HTTPClient';
 
 /**
  * Option to initialize Client.
@@ -47,6 +49,8 @@ export class Client {
      * Use this to set your Rich Presence state details.
      */
     public readonly rpc: HieuxyzRPC;
+    public readonly settings: UserSettings;
+    public readonly http: HTTPClient;
     private readonly websocket: DiscordWebSocket;
     private readonly imageService: ImageService;
     private readonly token: string;
@@ -61,6 +65,8 @@ export class Client {
             throw new Error('Tokens are required to connect to Discord.');
         }
         this.token = options.token;
+        this.http = new HTTPClient(this.token);
+        this.settings = new UserSettings(this);
         this.imageService = new ImageService(options.apiBaseUrl);
 
         this.websocket = new DiscordWebSocket(this.token, {
@@ -78,6 +84,7 @@ export class Client {
      * @returns {Promise<void>} A promise will be resolved when the client is ready.
      */
     public async run(): Promise<void> {
+        this.http.initialize(); 
         this.websocket.connect();
         logger.info('Waiting for Discord session to be ready...');
         await this.websocket.readyPromise;

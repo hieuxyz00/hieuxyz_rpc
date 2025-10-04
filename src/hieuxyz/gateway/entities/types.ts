@@ -44,6 +44,11 @@ export interface Activity {
     instance?: boolean;
     flags?: number;
     sync_id?: string;
+    emoji?: {
+        name: string;
+        id?: string;
+        animated?: boolean;
+    };
     party?: {
         id?: string;
         size?: [number, number];
