@@ -1,5 +1,3 @@
-// src/hieuxyz/http/types.ts
-
 import { Method } from 'axios';
 
 export interface RequestOptions {

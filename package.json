@@ -1,6 +1,6 @@
 {
   "name": "@hieuxyz/rpc",
-  "version": "1.1.11",
+  "version": "1.2.2b",
   "description": "A Discord Rich Presence library for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,19 +33,19 @@
   "homepage": "https://github.com/hieuxyz00/hieuxyz_rpc#readme",
   "dependencies": {
     "@sapphire/async-queue": "^1.5.5",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "tough-cookie": "^6.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^24.6.2",
+    "@types/node": "^25.0.3",
     "@types/ws": "^8.18.1",
-    "eslint": "^9.36.0",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
-    "prettier": "^3.6.2",
+    "prettier": "^3.7.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.45.0"
+    "typescript-eslint": "^8.51.0"
   }
 }

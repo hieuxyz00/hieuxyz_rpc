@@ -7,7 +7,7 @@ import {
     ActivityType,
 } from '../gateway/entities/types';
 import { ImageService } from './ImageService';
-import { DiscordImage, ExternalImage, RawImage, RpcImage } from './RpcImage';
+import { DiscordImage, ExternalImage, RawImage, RpcImage, ApplicationImage } from './RpcImage';
 import { logger } from '../utils/logger';
 
 /**
@@ -64,6 +64,12 @@ export class HieuxyzRPC {
     private resolvedAssetsCache: Map<string, string> = new Map();
     private renewalInterval: NodeJS.Timeout | null = null;
 
+    /**
+     * Cache for Application Assets (Bot Assets).
+     * Map<ApplicationID, Map<AssetName, AssetID>>
+     */
+    private applicationAssetsCache: Map<string, Map<string, string>> = new Map();
+
     constructor(websocket: DiscordWebSocket, imageService: ImageService) {
         this.websocket = websocket;
         this.imageService = imageService;
@@ -107,7 +113,6 @@ export class HieuxyzRPC {
         if (assetKey.startsWith('twitch:')) {
             return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${assetKey.substring(7)}.png`;
         }
-        // For assets uploaded to a Discord application
         if (this.applicationId && !assetKey.startsWith('http')) {
             return `https://cdn.discordapp.com/app-assets/${this.applicationId}/${assetKey}.png`;
         }
@@ -134,6 +139,9 @@ export class HieuxyzRPC {
         }
         if (source.startsWith('attachments/') || source.startsWith('external/')) {
             return new DiscordImage(source);
+        }
+        if (/^[a-zA-Z0-9_]+$/.test(source) && !/^\d{17,20}$/.test(source)) {
+            return new ApplicationImage(source);
         }
         return new RawImage(source);
     }
@@ -222,7 +230,7 @@ export class HieuxyzRPC {
 
     /**
      * Set large image and its caption text.
-     * @param {string | RpcImage} source - Image source (URL, asset key, or RpcImage object).
+     * @param {string | RpcImage} source - Image source (URL, asset key, Asset Name or RpcImage object).
      * @param {string} [text] - Text displayed when hovering over image.
      * @returns {this}
      */
@@ -234,7 +242,7 @@ export class HieuxyzRPC {
 
     /**
      * Set the small image and its caption text.
-     * @param {string | RpcImage} source - Image source (URL, asset key, or RpcImage object).
+     * @param {string | RpcImage} source - Image source (URL, asset key, Asset Name or RpcImage object).
      * @param {string} [text] - Text displayed when hovering over image.
      * @returns {this}
      */
@@ -293,8 +301,8 @@ export class HieuxyzRPC {
      * @returns {this}
      */
     public setApplicationId(id: string): this {
-        if (!/^\d{18,19}$/.test(id)) {
-            throw new Error('The app ID must be an 18 or 19 digit number.');
+        if (!/^\d{17,20}$/.test(id)) {
+            throw new Error('The app ID must be a valid number string (17-20 digits).');
         }
         this.applicationId = id;
         return this;
@@ -329,7 +337,7 @@ export class HieuxyzRPC {
         this.activity.instance = instance;
         return this;
     }
-    
+
     /**
      * Sets the emoji for an activity (primarily used for Custom Status).
      * @param {object} [emoji] - The emoji object to display.
@@ -441,10 +449,37 @@ export class HieuxyzRPC {
         }
     }
 
+    /**
+     * Ensure assets are fetched for the current application ID.
+     */
+    private async ensureAppAssetsLoaded(): Promise<void> {
+        if (!this.applicationAssetsCache.has(this.applicationId)) {
+            logger.info(`Fetching assets for Application ID: ${this.applicationId}...`);
+            const assets = await this.imageService.fetchApplicationAssets(this.applicationId);
+            const assetMap = new Map<string, string>();
+            assets.forEach((asset) => {
+                assetMap.set(asset.name, asset.id);
+            });
+            this.applicationAssetsCache.set(this.applicationId, assetMap);
+            logger.info(`Loaded ${assets.length} assets for Application ID: ${this.applicationId}.`);
+        }
+    }
+
     private async resolveImage(image: RpcImage | undefined): Promise<string | undefined> {
         if (!image) return undefined;
-
         const cacheKey = image.getCacheKey();
+        if (cacheKey.startsWith('app_asset:')) {
+            await this.ensureAppAssetsLoaded();
+            const assetName = cacheKey.substring('app_asset:'.length);
+            const appAssets = this.applicationAssetsCache.get(this.applicationId);
+            const assetId = appAssets?.get(assetName);
+            if (!assetId) {
+                logger.warn(`Asset with name "${assetName}" not found for Application ID ${this.applicationId}.`);
+                return undefined;
+            }
+            return assetId;
+        }
+
         const cachedAsset = this.resolvedAssetsCache.get(cacheKey);
 
         if (cachedAsset) {
@@ -453,6 +488,10 @@ export class HieuxyzRPC {
 
         const resolvedAsset = await image.resolve(this.imageService);
         if (resolvedAsset) {
+            if (resolvedAsset.startsWith('app_asset:')) {
+                return this.resolveImage(image);
+            }
+
             this.resolvedAssetsCache.set(cacheKey, resolvedAsset);
         }
         return resolvedAsset;

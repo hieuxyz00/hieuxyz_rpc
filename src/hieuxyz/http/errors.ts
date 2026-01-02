@@ -8,7 +8,7 @@ function flattenErrors(errors: any, key = ''): string[] {
     for (const fieldName in errors) {
         if (fieldName === 'message' || fieldName === 'code') continue;
         const newKey = key ? `${key}.${fieldName}` : fieldName;
-        
+
         if (errors[fieldName]._errors) {
             messages.push(`${newKey}: ${errors[fieldName]._errors.map((e: any) => e.message).join(' ')}`);
         } else if (typeof errors[fieldName] === 'object') {
@@ -37,13 +37,8 @@ export class DiscordAPIError extends HTTPError {
         const errorData = response.data || {};
         const message = errorData.message || 'An unknown API error occurred.';
         const flattened = flattenErrors(errorData.errors).join('\n');
-        
-        super(
-            flattened ? `${message}\n${flattened}` : message,
-            'DiscordAPIError',
-            response.status,
-            request
-        );
+
+        super(flattened ? `${message}\n${flattened}` : message, 'DiscordAPIError', response.status, request);
 
         this.code = errorData.code;
     }

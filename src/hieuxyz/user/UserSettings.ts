@@ -1,5 +1,5 @@
-import { Client } from "../Client";
-import { logger } from "../utils/logger";
+import { Client } from '../Client';
+import { logger } from '../utils/logger';
 
 /**
  * Represents the options for setting a persistent custom status.
@@ -11,9 +11,9 @@ export interface CustomStatusOptions {
     emojiName?: string;
     /** (Optional) The ID of the custom emoji. Required if `emojiName` is a custom emoji. */
     emojiId?: string;
-    /** 
-     * (Optional) The expiration time for the status. Can be an ISO 8601 string or a Date object. 
-     * Set to `null` for no expiration. 
+    /**
+     * (Optional) The expiration time for the status. Can be an ISO 8601 string or a Date object.
+     * Set to `null` for no expiration.
      */
     expiresAt?: string | Date | null;
 }
@@ -41,23 +41,21 @@ export class UserSettings {
      *   emojiName: "💻",
      *   expiresAt: new Date(Date.now() + 60 * 60 * 1000)
      * });
-     * 
+     *
      * // Set a status that never expires
      * await client.settings.setCustomStatus({
      *   text: "Always online",
      *   emojiName: "😎",
      *   expiresAt: null
      * });
-     * 
+     *
      * // Clear the custom status
      * await client.settings.setCustomStatus({ text: null });
      */
     public async setCustomStatus(options: CustomStatusOptions): Promise<void> {
         let expires_at: string | null = null;
         if (options.expiresAt) {
-            expires_at = options.expiresAt instanceof Date 
-                ? options.expiresAt.toISOString() 
-                : options.expiresAt;
+            expires_at = options.expiresAt instanceof Date ? options.expiresAt.toISOString() : options.expiresAt;
         }
 
         const payload = {
@@ -71,7 +69,7 @@ export class UserSettings {
 
         try {
             await this.client.http.api.users('@me').settings.patch({ data: payload });
-            logger.info("Successfully set persistent custom status.");
+            logger.info('Successfully set persistent custom status.');
         } catch (error) {
             logger.error(`Failed to set persistent custom status: ${error}`);
             throw error;

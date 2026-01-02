@@ -219,7 +219,7 @@ Main builder class for RPC.
 -   `new LocalImage(filePath, fileName?)`: Upload a photo from your device.
 -   `new RawImage(assetKey)`: Use an existing asset key directly (e.g., `spotify:track_id`).
 -   `new DiscordImage(key)`: Use assets already on Discord (e.g., `mp:attachments/...`).
-
+-   `new ApplicationImage(name)`: Use an asset name from your Discord Application (requires .setApplicationId()).
 ## Author
 
 Developed by **hieuxyz**.

@@ -10,7 +10,7 @@ import { AsyncQueue } from '@sapphire/async-queue';
 
 const DISCORD_API_VERSION = '9';
 const BASE_URL = `https://discord.com/api/v${DISCORD_API_VERSION}`;
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class HTTPClient {
     public readonly api: any;
@@ -36,15 +36,15 @@ export class HTTPClient {
 
     private getHeaders(): Record<string, string> {
         if (!this.headerBuilder) {
-            throw new Error("HTTPClient not initialized. Call client.http.initialize() first.");
+            throw new Error('HTTPClient not initialized. Call client.http.initialize() first.');
         }
         return {
-            'Authorization': this.token,
-            'Cookie': this.cookieJar.getCookieStringSync(BASE_URL),
-            ...this.headerBuilder.getBaseHeaders()
+            Authorization: this.token,
+            Cookie: this.cookieJar.getCookieStringSync(BASE_URL),
+            ...this.headerBuilder.getBaseHeaders(),
         };
     }
-    
+
     public async request(request: InternalRequest): Promise<any> {
         await this.initialize();
 
@@ -59,7 +59,7 @@ export class HTTPClient {
             queue.shift();
         }
     }
-    
+
     private async execute(request: InternalRequest): Promise<any> {
         if (Date.now() < this.globalReset) {
             const timeout = this.globalReset - Date.now();
@@ -69,7 +69,7 @@ export class HTTPClient {
 
         const headers = { ...this.getHeaders(), ...request.headers };
         let body = request.data;
-        
+
         if (request.files) {
             const formData = new FormData();
             request.files.forEach((file, index) => {
@@ -106,13 +106,15 @@ export class HTTPClient {
             throw new HTTPError(error.message, 'NetworkError', error.response?.status ?? 500, request);
         }
     }
-    
+
     private handleResponse(response: AxiosResponse, request: InternalRequest): Promise<any> {
         const { status, data } = response;
-        
+
         if (status === 429) {
             const retryAfter = data.retry_after * 1000;
-            logger.warn(`[HTTP] Rate limited on route ${request.route}. Retrying in ${retryAfter}ms. Global: ${data.global}`);
+            logger.warn(
+                `[HTTP] Rate limited on route ${request.route}. Retrying in ${retryAfter}ms. Global: ${data.global}`,
+            );
             if (data.global) {
                 this.globalReset = Date.now() + retryAfter;
             }
@@ -120,18 +122,18 @@ export class HTTPClient {
         }
 
         if (status >= 500 && status < 600) {
-             request.retries = (request.retries || 0) + 1;
-             if (request.retries < 3) {
-                 const sleepTime = 1000 * (request.retries ** 2);
-                 logger.warn(`[HTTP] Server error ${status}. Retrying in ${sleepTime}ms.`);
-                 return sleep(sleepTime).then(() => this.execute(request));
-             }
+            request.retries = (request.retries || 0) + 1;
+            if (request.retries < 3) {
+                const sleepTime = 1000 * request.retries ** 2;
+                logger.warn(`[HTTP] Server error ${status}. Retrying in ${sleepTime}ms.`);
+                return sleep(sleepTime).then(() => this.execute(request));
+            }
         }
-        
+
         if (status >= 200 && status < 300) {
             return Promise.resolve(data);
         }
-        
+
         return Promise.reject(new DiscordAPIError(response, request));
     }
 }
