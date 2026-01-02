@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Client, LocalImage, logger } from '../src';
+import { Client, logger } from '../src';
 
 async function start() {
     const token = process.env.DISCORD_USER_TOKEN;
@@ -14,14 +14,15 @@ async function start() {
 
     client.rpc
         .setName('Visual Studio Code')
-        .setDetails('Developing a new library')
+        .setDetails('Update rpc library')
         .setState('Workspace: @hieuxyz/rpc')
         .setPlatform('desktop')
         .setType(0) // Playing
         .setTimestamps(Date.now())
         .setParty(1, 5)
-        .setLargeImage(new LocalImage(path.join(__dirname, 'typescript.png'), 'typescript.png'), 'Typescript')
-        .setSmallImage(new LocalImage(path.join(__dirname, 'vscode.png'), 'vscode.png'), 'VS Code')
+        .setApplicationId('914622396630175855')
+        .setLargeImage('ts_file')
+        .setSmallImage('vs_2026')
         .setButtons([
             { label: 'View on GitHub', url: 'https://github.com/hieuxyz00/hieuxyz_rpc' },
             { label: 'View on NPM', url: 'https://www.npmjs.com/package/@hieuxyz/rpc' },

@@ -3,6 +3,12 @@ import * as fs from 'fs';
 import FormData from 'form-data';
 import { logger } from '../utils/logger';
 
+export interface DiscordAsset {
+    id: string;
+    type: number;
+    name: string;
+}
+
 /**
  * A service to handle external image proxying and local image uploading.
  * Interact with a backend API service to manage image assets.
@@ -86,5 +92,24 @@ export class ImageService {
             logger.error(`Failed to renew asset ${assetId}: ${err.response?.data || err.message}`);
         }
         return undefined;
+    }
+
+    /**
+     * Fetch all assets for a specific Discord Application.
+     * @param applicationId - The ID of the application.
+     * @returns {Promise<DiscordAsset[]>} List of assets (id, name, type).
+     */
+    public async fetchApplicationAssets(applicationId: string): Promise<DiscordAsset[]> {
+        try {
+            const url = `https://discord.com/api/v9/oauth2/applications/${applicationId}/assets`;
+            const response = await axios.get<DiscordAsset[]>(url);
+            return response.data;
+        } catch (error) {
+            const err = error as AxiosError;
+            logger.error(
+                `Failed to fetch assets for application ${applicationId}: ${err.message}. Ensure the App ID is correct.`,
+            );
+            return [];
+        }
     }
 }

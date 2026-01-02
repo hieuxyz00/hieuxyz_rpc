@@ -94,3 +94,24 @@ export class RawImage extends RpcImage {
         return `raw:${this.assetKey}`;
     }
 }
+
+/**
+ * Represents an asset uploaded to the Discord Application (Bot Assets).
+ * It will resolve the asset ID by matching the asset name.
+ */
+export class ApplicationImage extends RpcImage {
+    /**
+     * @param assetName The name of the asset as defined in the Discord Developer Portal.
+     */
+    constructor(public assetName: string) {
+        super();
+    }
+
+    async resolve(__imageService: ImageService): Promise<string | undefined> {
+        return `app_asset:${this.assetName}`;
+    }
+
+    getCacheKey(): string {
+        return `app_asset:${this.assetName}`;
+    }
+}

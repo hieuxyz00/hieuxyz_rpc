@@ -3,7 +3,7 @@ import * as zlib from 'zlib';
 import { logger } from '../utils/logger';
 import { ClientProperties, getIdentifyPayload } from './entities/identify';
 import { OpCode } from './entities/OpCode';
-import { GatewayPayload, PresenceUpdatePayload } from './entities/types';
+import { GatewayPayload, PresenceUpdatePayload, DiscordUser } from './entities/types';
 
 interface DiscordWebSocketOptions {
     alwaysReconnect: boolean;
@@ -27,12 +27,18 @@ export class DiscordWebSocket {
     private isReconnecting: boolean = false;
     private permanentClose: boolean = false;
     private connectTimeout: NodeJS.Timeout | null = null;
-    private resolveReady: () => void = () => {};
+    private resolveReady: (user: DiscordUser) => void = () => {};
+
+    /**
+     * Current logged in user info.
+     */
+    public user: DiscordUser | null = null;
+
     /**
      * A promise will be resolved when the Gateway connection is ready.
      * and received the READY event.
      */
-    public readyPromise: Promise<void>;
+    public readyPromise: Promise<DiscordUser>;
 
     /**
      * Create a DiscordWebSocket instance.
@@ -50,11 +56,11 @@ export class DiscordWebSocket {
             properties: options.properties,
             connectionTimeout: options.connectionTimeout ?? 30000,
         };
-        this.readyPromise = new Promise<void>((resolve) => (this.resolveReady = resolve));
+        this.readyPromise = new Promise<DiscordUser>((resolve) => (this.resolveReady = resolve));
     }
 
     private resetReadyPromise() {
-        this.readyPromise = new Promise<void>((resolve) => (this.resolveReady = resolve));
+        this.readyPromise = new Promise<DiscordUser>((resolve) => (this.resolveReady = resolve));
     }
 
     private isTokenValid(token: string): boolean {
@@ -168,11 +174,15 @@ export class DiscordWebSocket {
                 if (payload.t === 'READY') {
                     this.sessionId = payload.d.session_id;
                     this.resumeGatewayUrl = payload.d.resume_gateway_url + '/?v=10&encoding=json';
+                    this.user = payload.d.user as DiscordUser;
+
                     logger.info(`Session READY. Session ID: ${this.sessionId}. Resume URL set.`);
-                    this.resolveReady();
+                    this.resolveReady(this.user);
                 } else if (payload.t === 'RESUMED') {
                     logger.info('The session has been successfully resumed.');
-                    this.resolveReady();
+                    if (this.user) {
+                        this.resolveReady(this.user);
+                    }
                 }
                 break;
 
