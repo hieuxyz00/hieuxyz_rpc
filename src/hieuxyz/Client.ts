@@ -85,7 +85,7 @@ export class Client {
      * Displays information about the library.
      */
     private printAbout(): void {
-        const version = '1.2.0';
+        const version = '1.2.01';
         console.log(`
   _     _                               
  | |__ (_) ___ _   ___  ___   _ ______  

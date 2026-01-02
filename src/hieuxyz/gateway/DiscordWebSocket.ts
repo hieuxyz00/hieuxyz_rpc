@@ -28,6 +28,7 @@ export class DiscordWebSocket {
     private permanentClose: boolean = false;
     private connectTimeout: NodeJS.Timeout | null = null;
     private resolveReady: (user: DiscordUser) => void = () => {};
+    private lastHeartbeatAck: boolean = true;
 
     /**
      * Current logged in user info.
@@ -120,18 +121,15 @@ export class DiscordWebSocket {
             this.connectTimeout = null;
         }
         this.isReconnecting = false;
-
-        if (code === 4004) {
+        if (code === 4004 || code === 4999) {
             this.sessionId = null;
             this.sequence = null;
             this.resumeGatewayUrl = null;
         }
-
         if (this.permanentClose) {
             logger.info('Connection permanently closed by client. Not reconnecting.');
             return;
         }
-
         if (this.shouldReconnect(code)) {
             logger.info('Attempting to reconnect in 5 seconds...');
             setTimeout(() => this.connect(), 5000);
@@ -188,6 +186,7 @@ export class DiscordWebSocket {
 
             case OpCode.HEARTBEAT_ACK:
                 logger.info('Heartbeat acknowledged.');
+                this.lastHeartbeatAck = true;
                 break;
 
             case OpCode.INVALID_SESSION:
@@ -195,6 +194,8 @@ export class DiscordWebSocket {
                 if (payload.d) {
                     this.ws?.close(4000, 'Invalid session, attempting to resume.');
                 } else {
+                    this.sessionId = null;
+                    this.sequence = null;
                     this.ws?.close(4004, 'Invalid session, starting a new session.');
                 }
                 break;
@@ -211,17 +212,26 @@ export class DiscordWebSocket {
 
     private startHeartbeating() {
         this.cleanupHeartbeat();
+        this.lastHeartbeatAck = true;
         setTimeout(() => {
             if (this.ws?.readyState === WebSocket.OPEN) {
                 this.sendHeartbeat();
             }
 
             this.heartbeatInterval = setInterval(() => {
+                if (!this.lastHeartbeatAck) {
+                    logger.warn('Heartbeat ACK missing. Connection is zombie. Terminating to resume...');
+                    this.ws?.terminate();
+                    return;
+                }
+
                 if (this.ws?.readyState !== WebSocket.OPEN) {
                     logger.warn('Heartbeat skipped: WebSocket is not open.');
                     this.cleanupHeartbeat();
                     return;
                 }
+
+                this.lastHeartbeatAck = false;
                 this.sendHeartbeat();
             }, this.heartbeatIntervalValue);
         }, this.heartbeatIntervalValue * Math.random());
@@ -300,8 +310,6 @@ export class DiscordWebSocket {
     }
 
     private shouldReconnect(code: number): boolean {
-        if (code === 1006) return true;
-
         const fatalErrorCodes = [4004, 4010, 4011, 4013, 4014];
         if (fatalErrorCodes.includes(code)) {
             logger.error(`Fatal WebSocket error received (code: ${code}). Will not reconnect.`);
@@ -310,7 +318,6 @@ export class DiscordWebSocket {
         if (this.options.alwaysReconnect) {
             return true;
         }
-
         return code !== 1000;
     }
 }
