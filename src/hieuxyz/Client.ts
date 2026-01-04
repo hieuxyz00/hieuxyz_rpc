@@ -3,7 +3,7 @@ import { HieuxyzRPC } from './rpc/HieuxyzRPC';
 import { ImageService } from './rpc/ImageService';
 import { logger } from './utils/logger';
 import { ClientProperties } from './gateway/entities/identify';
-import { DiscordUser, UserFlags } from './gateway/entities/types';
+import { DiscordUser, UserFlags, Activity } from './gateway/entities/types';
 
 /**
  * Option to initialize Client.
@@ -44,10 +44,15 @@ export interface ClientOptions {
  */
 export class Client {
     /**
-     * Provides access to RPC constructor methods.
-     * Use this to set your Rich Presence state details.
+     * The default RPC instance.
+     * Use this to set your main Rich Presence state details.
      */
     public readonly rpc: HieuxyzRPC;
+
+    /**
+     * List of all RPC instances managed by this client.
+     */
+    private rpcs: HieuxyzRPC[] = [];
 
     /**
      * Information about the logged-in user.
@@ -76,16 +81,63 @@ export class Client {
             properties: options.properties,
             connectionTimeout: options.connectionTimeout,
         });
-
-        this.rpc = new HieuxyzRPC(this.websocket, this.imageService);
+        this.rpc = this.createRPC();
         this.printAbout();
+    }
+
+    /**
+     * Create a new RPC instance.
+     * Use this if you want to display multiple activities simultaneously (Multi-RPC).
+     * @returns {HieuxyzRPC} A new RPC builder instance.
+     */
+    public createRPC(): HieuxyzRPC {
+        const newRpc = new HieuxyzRPC(this.imageService, async () => {
+            await this.sendAllActivities();
+        });
+        this.rpcs.push(newRpc);
+        return newRpc;
+    }
+
+    /**
+     * Removes an RPC instance and cleans up its resources.
+     * @param {HieuxyzRPC} rpcInstance The RPC instance to remove.
+     */
+    public removeRPC(rpcInstance: HieuxyzRPC): void {
+        const index = this.rpcs.indexOf(rpcInstance);
+        if (index > -1) {
+            rpcInstance.destroy();
+            this.rpcs.splice(index, 1);
+            this.sendAllActivities();
+        }
+    }
+
+    /**
+     * Aggregates activities from all RPC instances and sends them to Discord.
+     * Uses Promise.all for parallel asset resolution.
+     */
+    private async sendAllActivities(): Promise<void> {
+        const potentialActivities = await Promise.all(this.rpcs.map((rpc) => rpc.buildActivity()));
+        const activities = potentialActivities.filter((a): a is Activity => a !== null);
+        let status = 'online';
+        for (let i = this.rpcs.length - 1; i >= 0; i--) {
+            if (this.rpcs[i].currentStatus) {
+                status = this.rpcs[i].currentStatus;
+                break;
+            }
+        }
+        this.websocket.sendActivity({
+            since: 0,
+            activities: activities,
+            status: status as 'online' | 'dnd' | 'idle' | 'invisible' | 'offline',
+            afk: true,
+        });
     }
 
     /**
      * Displays information about the library.
      */
     private printAbout(): void {
-        const version = '1.2.01';
+        const version = '1.2.2';
         console.log(`
   _     _                               
  | |__ (_) ___ _   ___  ___   _ ______  
@@ -216,7 +268,7 @@ export class Client {
      * even if `alwaysReconnect` is enabled. Defaults to false.
      */
     public close(force: boolean = false): void {
-        this.rpc.stopBackgroundRenewal();
+        this.rpcs.forEach((rpc) => rpc.destroy());
         this.websocket.close(force);
     }
 }

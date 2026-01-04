@@ -1,6 +1,6 @@
 {
   "name": "@hieuxyz/rpc",
-  "version": "1.2.01",
+  "version": "1.2.2",
   "description": "A Discord Rich Presence library for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,8 +10,15 @@
     "LICENSE"
   ],
   "scripts": {
+    "tsx": "tsx",
+    "esbuild": "esbuild",
+    "check": "tsc --noEmit",
+    "dev": "tsx --env-file=.env examples/main.ts",
+    "dev:ts": "node -r ts-node/register --env-file=.env examples/main.ts",
     "build": "tsc",
-    "dev": "node -r ts-node/register --env-file=.env examples/main.ts",
+    "build:es": "esbuild src/index.ts --bundle --platform=node --minify --outfile=dist/index.ts",
+    "build:ex": "esbuild examples/main.ts --bundle --platform=node --minify --outfile=dist/main.js",
+    "start:ex": "node --env-file=.env dist/main.js",
     "lint": "eslint \"src/**/*.ts\" --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"examples/**/*.ts\""
@@ -38,11 +45,13 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "@types/ws": "^8.18.1",
+    "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.7.4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.51.0"
   }

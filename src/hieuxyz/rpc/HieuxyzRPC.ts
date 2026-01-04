@@ -1,11 +1,4 @@
-import { DiscordWebSocket } from '../gateway/DiscordWebSocket';
-import {
-    Activity,
-    PresenceUpdatePayload,
-    SettableActivityType,
-    ActivityTypeName,
-    ActivityType,
-} from '../gateway/entities/types';
+import { Activity, SettableActivityType, ActivityTypeName, ActivityType } from '../gateway/entities/types';
 import { ImageService } from './ImageService';
 import { DiscordImage, ExternalImage, RawImage, RpcImage, ApplicationImage } from './RpcImage';
 import { logger } from '../utils/logger';
@@ -43,12 +36,14 @@ interface RpcSecrets {
 
 export type DiscordPlatform = 'desktop' | 'android' | 'ios' | 'samsung' | 'xbox' | 'ps4' | 'ps5' | 'embedded';
 
+type UpdateCallback = () => Promise<void>;
+
 /**
  * Class built for creating and managing Discord Rich Presence states.
  */
 export class HieuxyzRPC {
-    private websocket: DiscordWebSocket;
     private imageService: ImageService;
+    private onUpdate: UpdateCallback;
     private activity: Partial<Activity> = {};
     private assets: RpcAssets = {};
     private status: 'online' | 'dnd' | 'idle' | 'invisible' | 'offline' = 'online';
@@ -62,6 +57,12 @@ export class HieuxyzRPC {
      * Value: The resolved asset key (e.g., "mp:attachments/...").
      */
     private resolvedAssetsCache: Map<string, string> = new Map();
+
+    /**
+     * Maximum number of items in cache to prevent memory leaks/bloat over long runtime.
+     */
+    private readonly MAX_CACHE_SIZE = 50;
+
     private renewalInterval: NodeJS.Timeout | null = null;
 
     /**
@@ -70,9 +71,9 @@ export class HieuxyzRPC {
      */
     private applicationAssetsCache: Map<string, Map<string, string>> = new Map();
 
-    constructor(websocket: DiscordWebSocket, imageService: ImageService) {
-        this.websocket = websocket;
+    constructor(imageService: ImageService, onUpdate: UpdateCallback) {
         this.imageService = imageService;
+        this.onUpdate = onUpdate;
         this.startBackgroundRenewal();
     }
 
@@ -397,7 +398,7 @@ export class HieuxyzRPC {
     private async renewAssetIfNeeded(cacheKey: string, assetKey: string): Promise<string> {
         const expiryTimeMs = this.getExpiryTime(assetKey);
         if (expiryTimeMs && expiryTimeMs < Date.now() + 3600000) {
-            logger.info(`Asset ${cacheKey} is expiring soon. Renewing...`);
+            // logger.info(`Asset ${cacheKey} is expiring soon. Renewing...`);
             const assetId = assetKey.split('mp:attachments/')[1];
             const newAsset = await this.imageService.renewImage(assetId);
             if (newAsset) {
@@ -414,7 +415,7 @@ export class HieuxyzRPC {
             clearInterval(this.renewalInterval);
         }
         this.renewalInterval = setInterval(async () => {
-            logger.info('Running background asset renewal check...');
+            // logger.info('Running background asset renewal check...');
             for (const [cacheKey, assetKey] of this.resolvedAssetsCache.entries()) {
                 await this.renewAssetIfNeeded(cacheKey, assetKey);
             }
@@ -428,7 +429,7 @@ export class HieuxyzRPC {
         if (this.renewalInterval) {
             clearInterval(this.renewalInterval);
             this.renewalInterval = null;
-            logger.info('Stopped background asset renewal process.');
+            // logger.info('Stopped background asset renewal process.');
         }
     }
 
@@ -463,6 +464,13 @@ export class HieuxyzRPC {
             return assetId;
         }
 
+        if (this.resolvedAssetsCache.size >= this.MAX_CACHE_SIZE && !this.resolvedAssetsCache.has(cacheKey)) {
+            const oldestKey = this.resolvedAssetsCache.keys().next().value;
+            if (oldestKey) {
+                this.resolvedAssetsCache.delete(oldestKey);
+            }
+        }
+
         const cachedAsset = this.resolvedAssetsCache.get(cacheKey);
 
         if (cachedAsset) {
@@ -480,7 +488,16 @@ export class HieuxyzRPC {
         return resolvedAsset;
     }
 
-    private async buildActivity(): Promise<Activity> {
+    /**
+     * Publicly accessible method to build the Activity object.
+     * Used by Client to aggregate activities from multiple RPC instances.
+     * @returns {Promise<Activity | null>} The constructed activity or null if empty.
+     */
+    public async buildActivity(): Promise<Activity | null> {
+        if (Object.keys(this.activity).length === 0 && !this.assets.large_image && !this.assets.small_image) {
+            return null;
+        }
+
         const large_image = await this.resolveImage(this.assets.large_image);
         const small_image = await this.resolveImage(this.assets.small_image);
 
@@ -506,18 +523,11 @@ export class HieuxyzRPC {
     }
 
     /**
-     * Build the final Rich Presence payload and send it to Discord.
+     * Build the final Rich Presence payload and notify the Client to send it to Discord.
      * @returns {Promise<void>}
      */
     public async build(): Promise<void> {
-        const activity = await this.buildActivity();
-        const presencePayload: PresenceUpdatePayload = {
-            since: 0,
-            activities: [activity],
-            status: this.status,
-            afk: true,
-        };
-        this.websocket.sendActivity(presencePayload);
+        await this.onUpdate();
     }
 
     /**
@@ -530,24 +540,41 @@ export class HieuxyzRPC {
     }
 
     /**
-     * Clears the current Rich Presence from Discord and resets the builder state.
-     * This sends an empty activity payload to Discord and then resets all configured
-     * options (name, details, images, etc.) to their default values, allowing you
-     * to build a new presence from scratch.
+     * Clears the current Rich Presence from the user's profile and resets the builder.
      */
     public clear(): void {
-        const clearPayload: PresenceUpdatePayload = {
-            since: 0,
-            activities: [],
-            status: this.status,
-            afk: true,
-        };
-        this.websocket.sendActivity(clearPayload);
-        logger.info('Rich Presence cleared from Discord.');
         this.activity = {};
         this.assets = {};
         this.applicationId = '1416676323459469363'; // Reset to default
         this.platform = 'desktop'; // Reset to default
-        logger.info('RPC builder has been reset to its initial state.');
+        logger.info('RPC instance cleared.');
+        this.onUpdate();
+    }
+
+    /**
+     * Manually clear the asset cache to free memory.
+     */
+    public clearCache(): void {
+        this.resolvedAssetsCache.clear();
+        this.applicationAssetsCache.clear();
+        logger.info('RPC Asset cache has been cleared.');
+    }
+
+    /**
+     * Permanently destroy this RPC instance.
+     * Stops renewal timers and clears memory.
+     */
+    public destroy(): void {
+        this.stopBackgroundRenewal();
+        this.clearCache();
+        this.activity = {};
+        this.assets = {};
+    }
+
+    /**
+     * Get the current status set for this RPC instance.
+     */
+    public get currentStatus() {
+        return this.status;
     }
 }

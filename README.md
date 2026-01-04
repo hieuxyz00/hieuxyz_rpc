@@ -15,6 +15,7 @@ An easy-to-use and powerful Discord Rich Presence (RPC) library built for the No
 
 ## Outstanding features
 
+-   **Multi-RPC Support:** Display multiple activities simultaneously (e.g., Playing a game AND Listening to music) on a single client connection.
 -   **Flexible Builder Pattern:** Easily build your RPC state with intuitive chainable methods.
 -   **Easy to use:** The `Client` class abstracts away all the complex connection and setup logic, letting you get started with just a few lines of code.
 
@@ -103,6 +104,31 @@ async function start() {
 start().catch(err => {
     logger.error(`An unexpected error occurred: ${err}`);
 });
+```
+
+## Multi-RPC Usage
+
+You can display multiple statuses at once (Discord limits how these are shown, but the data is sent).
+
+```typescript
+// Configure the default RPC
+client.rpc
+    .setName("Visual Studio Code")
+    .setState("Coding...")
+    .setType(0); // Playing
+
+// Create a second RPC instance
+const musicRpc = client.createRPC();
+musicRpc
+    .setName("Spotify")
+    .setDetails("Listening to music")
+    .setApplicationId('12345678901234567') // A different ID is needed than the one already in use
+    .setType(2); // Listening
+
+await client.rpc.build();
+
+// To remove a specific RPC later and free memory:
+// client.removeRPC(musicRpc);
 ```
 
 ## Advanced Usage
@@ -212,6 +238,8 @@ Main builder class for RPC.
 -   `.build()`: Builds and sends the presence payload to Discord.
 -   `.updateRPC()`: Alias for `build()`.
 -   `.clear()`: Clears the Rich Presence from the user's profile and resets the builder.
+-   `.clearCache()`
+-   `.destroy()`
 
 ### Types of images
 
