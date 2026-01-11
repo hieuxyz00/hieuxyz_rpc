@@ -195,8 +195,8 @@ This is the main starting point.
     -   `options.connectionTimeout` (optional): Timeout in milliseconds for the initial connection. Defaults to `30000`.
 -   `client.run()`: Start connecting to Discord Gateway.
 -   `client.rpc`: Access the instance of `HieuxyzRPC` to build the state.
+-   `client.createRPC()`: Create a new separate RPC instance (Multi-RPC).
 -   `client.close(force?: boolean)`: Closes the connection to the Discord Gateway.
-    -   `force` (optional, boolean): If `true`, the client closes permanently and will not reconnect.
 
 ### Class `HieuxyzRPC`
 
@@ -205,23 +205,26 @@ Main builder class for RPC.
 #### Getter Properties
 -   `.largeImageUrl`: Returns the resolved URL for the large image, or `null`.
 -   `.smallImageUrl`: Returns the resolved URL for the small image, or `null`.
+-   `.currentStatus`: Returns the current status string (e.g. 'online').
 
 #### Setter Methods
 -   `.setName(string)`: Sets the activity name (first line).
 -   `.setDetails(string)`: Sets the activity details (second line).
 -   `.setState(string)`: Sets the activity state (third line).
--   `.setTimestamps(start?, end?)`: Sets the start and/or end times.
--   `.setParty(current, max)`: Sets the party information.
--   `.setLargeImage(RpcImage, text?)`: Sets the large image and its tooltip text.
--   `.setSmallImage(RpcImage, text?)`: Sets the small image and its tooltip text.
+-   `.setStatus('online' | 'dnd' | 'idle' | 'invisible' | 'offline')`: Sets the user's presence status.
+-   `.setType(ActivityType | string | number)`: Sets the activity type (Playing, Listening, etc.).
+-   `.setTimestamps(start?, end?)`: Sets the start and/or end times (ms).
+-   `.setParty(current, max, id?)`: Sets the party information.
+-   `.setLargeImage(RpcImage | string, text?)`: Sets the large image and its tooltip text.
+-   `.setSmallImage(RpcImage | string, text?)`: Sets the small image and its tooltip text.
 -   `.setButtons(buttons[])`: Sets up to two clickable buttons. Each button is an object `{ label: string, url: string }`.
+-   `.addButton(label, url)`: Adds a single button (max 2).
 -   `.setSecrets({ join?, spectate?, match? })`: Sets secrets for game invites.
 -   `.setSyncId(string)`: Sets the sync ID, used for features like Spotify track syncing.
 -   `.setFlags(number)`: Sets activity flags (e.g., for instanced games). Use the `ActivityFlags` enum.
--   `.setPlatform(platform)`: Sets the platform (`'desktop'`, `'xbox'`, etc.).
+-   `.setPlatform(platform)`: Sets the platform (`'desktop'`, `'android'`, `'ios'`, `'xbox'`, etc.).
 -   `.setInstance(boolean)`: Marks the activity as a specific, joinable instance.
 -   `.setApplicationId(string)`: Sets a custom Application ID.
--   `.setStatus('online' | ...)`: Sets the user's presence status.
 
 #### Clearer Methods
 -   `.clearDetails()`: Removes activity details.
@@ -238,16 +241,17 @@ Main builder class for RPC.
 -   `.build()`: Builds and sends the presence payload to Discord.
 -   `.updateRPC()`: Alias for `build()`.
 -   `.clear()`: Clears the Rich Presence from the user's profile and resets the builder.
--   `.clearCache()`
--   `.destroy()`
+-   `.clearCache()`: Clears the internal asset cache.
+-   `.destroy()`: Destroys the RPC instance and stops background tasks.
 
 ### Types of images
 
 -   `new ExternalImage(url)`: Use an image from an external URL (will be proxied).
 -   `new LocalImage(filePath, fileName?)`: Upload a photo from your device.
--   `new RawImage(assetKey)`: Use an existing asset key directly (e.g., `spotify:track_id`).
+-   `new RawImage(assetKey)`: Use an existing asset key directly.
 -   `new DiscordImage(key)`: Use assets already on Discord (e.g., `mp:attachments/...`).
 -   `new ApplicationImage(name)`: Use an asset name from your Discord Application (requires .setApplicationId()).
+
 ## Author
 
 Developed by **hieuxyz**.

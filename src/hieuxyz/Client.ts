@@ -137,7 +137,7 @@ export class Client {
      * Displays information about the library.
      */
     private printAbout(): void {
-        const version = '1.2.2';
+        const version = '1.2.3';
         console.log(`
   _     _                               
  | |__ (_) ___ _   ___  ___   _ ______  

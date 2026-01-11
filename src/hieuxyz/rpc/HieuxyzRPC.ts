@@ -222,10 +222,11 @@ export class HieuxyzRPC {
      * Set party information for the activity.
      * @param {number} currentSize - Current number of players.
      * @param {number} maxSize - Maximum number of players.
+     * @param {string} [id] - Optional custom party ID. Defaults to 'hieuxyz'.
      * @returns {this}
      */
-    public setParty(currentSize: number, maxSize: number): this {
-        this.activity.party = { id: 'hieuxyz', size: [currentSize, maxSize] };
+    public setParty(currentSize: number, maxSize: number, id: string = 'hieuxyz'): this {
+        this.activity.party = { id: id, size: [currentSize, maxSize] };
         return this;
     }
 
@@ -254,7 +255,33 @@ export class HieuxyzRPC {
     }
 
     /**
+     * Add a single button to the activity.
+     * @param {string} label - The text displayed on the button.
+     * @param {string} url - The URL opened when the button is clicked.
+     * @returns {this}
+     */
+    public addButton(label: string, url: string): this {
+        if (!this.activity.buttons) {
+            this.activity.buttons = [];
+        }
+        if (!this.activity.metadata) {
+            this.activity.metadata = { button_urls: [] };
+        }
+        if (!this.activity.metadata.button_urls) {
+            this.activity.metadata.button_urls = [];
+        }
+        if (this.activity.buttons.length >= 2) {
+            logger.warn('Cannot add more than 2 buttons. Button ignored.');
+            return this;
+        }
+        this.activity.buttons.push(this.sanitize(label, 32));
+        this.activity.metadata!.button_urls!.push(url);
+        return this;
+    }
+
+    /**
      * Set clickable buttons for RPC (up to 2).
+     * This will overwrite any existing buttons.
      * @param {RpcButton[]} buttons - An array of button objects, each with a `label` and `url`.
      * @returns {this}
      */
