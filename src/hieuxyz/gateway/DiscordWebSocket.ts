@@ -65,10 +65,7 @@ export class DiscordWebSocket {
     }
 
     private isTokenValid(token: string): boolean {
-        return (
-            /^[a-zA-Z0-9_-]{24}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{38}$/.test(token) ||
-            /^mfa\.[a-zA-Z0-9_-]{84}$/.test(token)
-        );
+        return token.split('.').length >= 3;
     }
 
     /**
